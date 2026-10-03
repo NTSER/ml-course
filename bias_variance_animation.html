@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bias and variance when estimating f</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f5f6f8;--fg:#1b2130;--mut:#5b6474;--pt:#8791a3;--card:#fff;--line:#d8dce4;--truth:#d6336c;--est:#2b59d9;--avg:#0b1f66;--bias:#d9730d}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#11141b;--fg:#e8ebf2;--mut:#98a1b3;--pt:#6f7a8f;--card:#181c25;--line:#2b3140;--truth:#ff6b9a;--est:#7c9cff;--avg:#dbe4ff;--bias:#ffa94d}}
+:root[data-theme="dark"]{--bg:#11141b;--fg:#e8ebf2;--mut:#98a1b3;--pt:#6f7a8f;--card:#181c25;--line:#2b3140;--truth:#ff6b9a;--est:#7c9cff;--avg:#dbe4ff;--bias:#ffa94d}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:960px;margin:0 auto;padding:20px 16px 32px}
+h1{font:600 26px/1.2 Georgia,"Iowan Old Style",serif;margin:0 0 4px}
+p.sub{margin:0 0 14px;color:var(--mut);max-width:75ch}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:8px 14px;border-radius:8px}
+button:focus-visible,input:focus-visible{outline:2px solid var(--est);outline-offset:2px}
+.stage{display:flex;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px}
+canvas{display:block;height:min(56vw,400px);min-height:280px;touch-action:none}
+#c1{flex:3 1 400px;min-width:0;width:100%}#c2{flex:2 1 300px;min-width:0;width:100%}
+.ctl{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.ctl label{color:var(--mut);font-size:14px;display:flex;gap:8px;align-items:center}
+input[type=range]{width:150px}
+.lbl{display:inline-block;min-width:11em}
+#read{font-weight:600;min-height:3em}
+#cap{color:var(--mut);margin:6px 0 0;max-width:75ch}
+.b{color:var(--bias)}.v{color:var(--est)}
+</style></head><body><main>
+<h1>Bias and variance when estimating f</h1>
+<p class="sub">Imagine we could collect many different training sets from the same world, each with 30 noisy points spread along x. Fit the same model to each one. Two things matter: how far the <b class="b">average</b> fitted curve is from the truth (<b class="b">bias</b>), and how much the fitted curve <b class="v">changes</b> from one training set to the next (<b class="v">variance</b>).</p>
+<div class="stage"><canvas id="c1" aria-label="Many fitted curves compared with the true function"></canvas><canvas id="c2" aria-label="Error breakdown"></canvas></div>
+<div class="ctl">
+<button id="play">Pause</button><button id="replay">Replay</button>
+<label>Flexibility (polynomial degree) <b id="dv">4</b><input type="range" id="d" min="1" max="12" value="4"></label>
+<label>look at x = <b id="xv">4.0</b><input type="range" id="x" min="0" max="10" step=".1" value="4"></label>
+</div>
+<div id="read"></div>
+<p id="cap"></p>
+<script>
+const $=id=>document.getElementById(id);
+let seed=7;const rnd=()=>(seed=seed*16807%2147483647)/2147483647;
+const gauss=()=>Math.sqrt(-2*Math.log(rnd()+1e-9))*Math.cos(6.2832*rnd());
+const f=x=>3+2.2*Math.sin(.65*x)+.12*x,SD=1,NTR=30,S=300,DM=12,G=101,SH=40;
+const grid=Array.from({length:G},(_,i)=>i/10);
+const cheb=(u,m)=>{const t=[1,u];for(let i=2;i<m;i++)t[i]=2*u*t[i-1]-t[i-2];return t.slice(0,m)};
+function fit(P,d){const m=d+1,A=Array.from({length:m},()=>Array(m+1).fill(0));
+P.forEach(p=>{const q=cheb((p.x-5)/5,m);for(let i=0;i<m;i++){for(let j=0;j<m;j++)A[i][j]+=q[i]*q[j];A[i][m]+=q[i]*p.y}});
+for(let i=0;i<m;i++)A[i][i]+=1e-9;
+for(let i=0;i<m;i++){let q=i;for(let r=i+1;r<m;r++)if(Math.abs(A[r][i])>Math.abs(A[q][i]))q=r;[A[i],A[q]]=[A[q],A[i]];for(let r=i+1;r<m;r++){const k=A[r][i]/A[i][i];for(let c=i;c<=m;c++)A[r][c]-=k*A[i][c]}}
+const c=Array(m);for(let i=m-1;i>=0;i--){let u=A[i][m];for(let j=i+1;j<m;j++)u-=A[i][j]*c[j];c[i]=u/A[i][i]}return c}
+const pr=(c,x)=>{const q=cheb((x-5)/5,c.length);let y=0;for(let i=0;i<c.length;i++)y+=c[i]*q[i];return y};
+const sets=[],preds=Array.from({length:DM+1},()=>[]);
+for(let k=0;k<S;k++){const P=Array.from({length:NTR},(_,i)=>{const x=(i+rnd())/NTR*10;return{x,y:f(x)+SD*gauss()}});sets.push(P);
+for(let d=1;d<=DM;d++){const c=fit(P,d);preds[d].push(Float32Array.from(grid,x=>pr(c,x)))}}
+const st=[];let best=1;
+for(let d=1;d<=DM;d++){let b=0,v=0;for(let g=0;g<G;g++){let m=0;for(let k=0;k<S;k++)m+=preds[d][k][g];m/=S;let vv=0;for(let k=0;k<S;k++)vv+=(preds[d][k][g]-m)**2;v+=vv/S;b+=(m-f(grid[g]))**2}
+st[d]={b:b/G,v:v/G,t:b/G+v/G+SD*SD};if(st[d].t<st[best]?.t||d==1)best=d}
+best=1;for(let d=2;d<=DM;d++)if(st[d].t<st[best].t)best=d;
+// timeline
+const dur=k=>k<2?2.4:k<6?1:.28,start=[];let acc=0;for(let k=0;k<SH;k++){start.push(acc);acc+=dur(k)}const TEND=acc;
+let tl=0,playing=true,deg=4,xi=40,last=0;
+$('play').onclick=()=>{if(tl>=TEND){tl=0;playing=true}else playing=!playing;$('play').textContent=playing?'Pause':'Play'};
+$('replay').onclick=()=>{tl=0;playing=true;$('play').textContent='Pause'};
+$('d').oninput=e=>{deg=+e.target.value;$('dv').textContent=deg};
+$('x').oninput=e=>{xi=Math.round(+e.target.value*10);$('xv').textContent=(xi/10).toFixed(1)};
+const c1=$('c1'),c2=$('c2'),x1=c1.getContext('2d'),x2=c2.getContext('2d');
+function size(c,x){const d=devicePixelRatio||1,w=Math.round(c.clientWidth*d),h=Math.round(c.clientHeight*d);if(c.width!==w||c.height!==h){c.width=w;c.height=h;x.setTransform(d,0,0,d,0,0)}}
+const col=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function state(){let shown=0,cur=-1,u=0;for(let k=0;k<SH;k++){if(tl>=start[k]+dur(k))shown=k+1;else if(tl>=start[k]){cur=k;u=(tl-start[k])/dur(k);break}else break}return{shown,cur,u}}
+function drawMain(sT){size(c1,x1);const ctx=x1,W=c1.clientWidth,H=c1.clientHeight,pl=34,pr_=10,pt=10,pb=26;
+const X=x=>pl+x/10*(W-pl-pr_),Y=y=>H-pb-(y+2)/11*(H-pt-pb);
+const EST=col('--est'),TR=col('--truth'),AV=col('--avg'),BI=col('--bias'),PT=col('--pt'),L=col('--line'),M=col('--mut'),F=col('--fg');
+ctx.clearRect(0,0,W,H);ctx.font='12px system-ui';ctx.fillStyle=M;ctx.strokeStyle=L;ctx.lineWidth=1;
+for(let v=0;v<=8;v+=2){ctx.beginPath();ctx.moveTo(pl,Y(v));ctx.lineTo(W-pr_,Y(v));ctx.stroke();ctx.fillText(v,pl-16,Y(v)+4)}
+for(let v=0;v<=10;v+=2)ctx.fillText(v,X(v)-3,H-8);ctx.fillText('x',W-pr_-6,H-8);ctx.fillText('y',6,pt+10);
+const P=preds[deg],{shown,cur,u}=sT;
+ctx.save();ctx.beginPath();ctx.rect(pl,pt,W-pl-pr_,H-pt-pb);ctx.clip();
+const path=(arr,upto)=>{ctx.beginPath();for(let g=0;g<=upto;g++)g?ctx.lineTo(X(grid[g]),Y(arr[g])):ctx.moveTo(X(grid[g]),Y(arr[g]))};
+for(let k=0;k<shown;k++){path(P[k],G-1);ctx.strokeStyle=EST;ctx.globalAlpha=.22;ctx.lineWidth=1.5;ctx.stroke()}
+ctx.globalAlpha=1;
+if(cur>=0){const pa=u<.35?u/.35:u>.8?1-(u-.8)/.2:1;ctx.globalAlpha=Math.max(0,pa);sets[cur].forEach(p=>{ctx.beginPath();ctx.arc(X(p.x),Y(p.y),4,0,7);ctx.fillStyle=PT;ctx.fill()});
+const dr=Math.max(0,Math.min(1,(u-.3)/.45));ctx.globalAlpha=1;if(dr>0){path(P[cur],Math.round(dr*(G-1)));ctx.strokeStyle=EST;ctx.lineWidth=2.2;ctx.globalAlpha=.7;ctx.stroke();ctx.globalAlpha=1}}
+if(shown>=2){const av=Float32Array.from(grid,(_,g)=>{let s=0;for(let k=0;k<shown;k++)s+=P[k][g];return s/shown});path(av,G-1);ctx.strokeStyle=AV;ctx.lineWidth=3.5;ctx.stroke()}
+ctx.beginPath();grid.forEach((x,g)=>g?ctx.lineTo(X(x),Y(f(x))):ctx.moveTo(X(x),Y(f(x))));ctx.strokeStyle=TR;ctx.lineWidth=2.5;ctx.setLineDash([6,5]);ctx.stroke();ctx.setLineDash([]);
+ctx.restore();
+// x marker
+const x0=grid[xi],fx=f(x0);let mean=0,sd=0;
+ctx.beginPath();ctx.moveTo(X(x0),pt);ctx.lineTo(X(x0),H-pb);ctx.strokeStyle=F;ctx.globalAlpha=.35;ctx.lineWidth=1.2;ctx.setLineDash([3,4]);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+if(shown>=2){for(let k=0;k<shown;k++){const y=P[k][xi];mean+=y;if(y>-2&&y<9){ctx.beginPath();ctx.arc(X(x0),Y(y),2.8,0,7);ctx.fillStyle=EST;ctx.globalAlpha=.55;ctx.fill();ctx.globalAlpha=1}}
+mean/=shown;for(let k=0;k<shown;k++)sd+=(P[k][xi]-mean)**2;sd=Math.sqrt(sd/shown);
+const cl=y=>Math.max(-1.9,Math.min(8.9,y));
+ctx.lineCap='round';ctx.lineWidth=5;ctx.strokeStyle=EST;ctx.beginPath();ctx.moveTo(X(x0)-9,Y(cl(mean-sd)));ctx.lineTo(X(x0)-9,Y(cl(mean+sd)));ctx.stroke();
+ctx.strokeStyle=BI;ctx.beginPath();ctx.moveTo(X(x0)+9,Y(fx));ctx.lineTo(X(x0)+9,Y(cl(mean)));ctx.stroke();ctx.lineCap='butt';
+ctx.beginPath();ctx.arc(X(x0),Y(cl(mean)),6,0,7);ctx.fillStyle=AV;ctx.fill();
+ctx.beginPath();ctx.arc(X(x0),Y(fx),6,0,7);ctx.fillStyle=TR;ctx.fill();
+const lx=X(x0)>W*.7;ctx.font='13px system-ui';ctx.textAlign=lx?'right':'left';ctx.fillStyle=EST;ctx.fillText('spread of fits',X(x0)+(lx?-16:16),Y(cl(mean+sd))-4);ctx.fillStyle=BI;ctx.fillText('bias',X(x0)+(lx?-16:16),Y((fx+cl(mean))/2)+4);ctx.textAlign='left'}
+// legend
+ctx.font='12px system-ui';[['— — truth f',TR],['—— average fit',AV],['thin lines: fits to different training sets',EST]].forEach(([t,c],i)=>{ctx.fillStyle=c;ctx.fillText(t,pl+8,pt+14+i*15)});
+// readout
+const b2=(mean-fx)**2,vr=sd*sd;
+$('read').innerHTML=shown>=2?`At x = ${x0.toFixed(1)} (${shown} training sets): truth ${fx.toFixed(2)} · average prediction ${mean.toFixed(2)}<br><span class="b">bias² ${b2.toFixed(2)}</span> + <span class="v">variance ${vr.toFixed(2)}</span> + noise ${(SD*SD).toFixed(2)} = expected squared error ${(b2+vr+SD*SD).toFixed(2)}`:'Drawing training sets…';
+return{b2,vr,ok:shown>=2}}
+function drawRight(r){size(c2,x2);const ctx=x2,W=c2.clientWidth,H=c2.clientHeight;
+const EST=col('--est'),BI=col('--bias'),L=col('--line'),M=col('--mut'),F=col('--fg'),PT=col('--pt');
+ctx.clearRect(0,0,W,H);ctx.font='13px system-ui';ctx.fillStyle=F;ctx.fillText('Error at the chosen x',10,18);
+const bx=10,bw=W-20,by=26,bh=22,top=6,sc=bw/top;let xx=bx;
+ctx.strokeStyle=L;ctx.strokeRect(bx,by,bw,bh);
+if(r.ok){[[r.b2,BI,'bias²'],[r.vr,EST,'variance'],[SD*SD,PT,'noise']].forEach(([v,c,t])=>{const w=Math.min(v*sc,bx+bw-xx);ctx.fillStyle=c;ctx.fillRect(xx,by,w,bh);xx+=w})}
+ctx.font='12px system-ui';[['bias²',BI],['variance',EST],['irreducible noise',PT]].forEach(([t,c],i)=>{ctx.fillStyle=c;ctx.fillText('■ '+t,bx+[0,62,140][i],by+bh+16)});
+ctx.fillStyle=F;ctx.font='13px system-ui';ctx.fillText('Averaged over all x, as flexibility grows',10,H*.34+8);
+const pl=34,pr_=10,pt=H*.34+20,pb=34,top2=4;
+const X=d=>pl+(d-1)/(DM-1)*(W-pl-pr_),Y=v=>H-pb-Math.min(v,top2)/top2*(H-pt-pb);
+ctx.font='12px system-ui';ctx.fillStyle=M;ctx.strokeStyle=L;ctx.lineWidth=1;
+for(let v=0;v<=top2;v+=2){ctx.beginPath();ctx.moveTo(pl,Y(v));ctx.lineTo(W-pr_,Y(v));ctx.stroke();ctx.fillText(v,pl-14,Y(v)+4)}
+[1,4,8,12].forEach(d=>ctx.fillText(d,X(d)-3,H-18));ctx.fillText('flexibility (degree) →',pl+20,H-4);
+ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(pl,Y(SD*SD));ctx.lineTo(W-pr_,Y(SD*SD));ctx.strokeStyle=M;ctx.stroke();ctx.setLineDash([]);
+ctx.beginPath();ctx.moveTo(X(deg),pt);ctx.lineTo(X(deg),H-pb);ctx.strokeStyle=M;ctx.globalAlpha=.5;ctx.stroke();ctx.globalAlpha=1;
+const ln=(k,c,w)=>{ctx.beginPath();for(let d=1;d<=DM;d++)d>1?ctx.lineTo(X(d),Y(st[d][k])):ctx.moveTo(X(d),Y(st[d][k]));ctx.strokeStyle=c;ctx.lineWidth=w;ctx.stroke();ctx.beginPath();ctx.arc(X(deg),Y(st[deg][k]),5,0,7);ctx.fillStyle=c;ctx.fill()};
+ln('b',BI,2.5);ln('v',EST,2.5);ln('t',F,3);
+ctx.font='12px system-ui';[['bias²',BI],['variance',EST],['total test error',F]].forEach(([t,c],i)=>{ctx.fillStyle=c;ctx.fillText('● '+t,pl+6+[0,62,132][i],pt+4)});
+ctx.fillStyle=M;ctx.fillText('noise floor',W-pr_-66,Y(1)-5)}
+const caps=d=>d<best-1?`Degree ${d} is too rigid: all the fits look alike (low variance) but they miss the truth in the same direction (high bias). More data would not fix that.`:d>best+1?`Degree ${d} is too flexible: the average of the fits is close to the truth (low bias) but each training set gives a very different curve (high variance).`:`Degree ${d} is near the sweet spot: the fits are centred close to the truth and not too scattered. Total error is lowest here.`;
+function tick(t){const dt=Math.min(.05,(t-last)/1000||0);last=t;
+if(playing){tl+=dt;if(tl>=TEND){tl=TEND;playing=false;$('play').textContent='Play'}}
+const r=drawMain(state());drawRight(r);$('cap').textContent=caps(deg);requestAnimationFrame(tick)}
+requestAnimationFrame(tick);
+</script></main></body></html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Statistical learning in motion</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f5f6f8;--fg:#1b2130;--mut:#5b6474;--pt:#8791a3;--card:#fff;--line:#d8dce4;--truth:#d6336c;--knn:#0b8f6a;--lin:#2b59d9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#11141b;--fg:#e8ebf2;--mut:#98a1b3;--pt:#6f7a8f;--card:#181c25;--line:#2b3140;--truth:#ff6b9a;--knn:#3ddc9f;--lin:#7c9cff}}
+:root[data-theme="dark"]{--bg:#11141b;--fg:#e8ebf2;--mut:#98a1b3;--pt:#6f7a8f;--card:#181c25;--line:#2b3140;--truth:#ff6b9a;--knn:#3ddc9f;--lin:#7c9cff}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+[hidden]{display:none!important}
+main{max-width:860px;margin:0 auto;padding:20px 16px 32px}
+h1{font:600 26px/1.2 Georgia,"Iowan Old Style",serif;margin:0 0 4px}
+p.sub{margin:0 0 16px;color:var(--mut)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:8px 14px;border-radius:8px}
+button:focus-visible,input:focus-visible{outline:2px solid var(--lin);outline-offset:2px}
+.tabs button[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 -3px 0 var(--c);font-weight:600}
+.stage{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px}
+canvas{display:block;width:100%;height:min(56vw,400px);min-height:260px;touch-action:none}
+.ctl{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.ctl label{color:var(--mut);font-size:14px;display:flex;gap:8px;align-items:center}
+input[type=range]{width:150px}
+#read{font-weight:600;min-height:1.5em}
+#cap{color:var(--mut);margin:6px 0 0;max-width:70ch}
+
+h1{margin-bottom:12px}
+.views{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:16px;background:var(--card)}
+.views button{border:0;border-radius:0;padding:9px 18px}
+.views button[aria-pressed="true"]{background:var(--fg);color:var(--bg);font-weight:600}
+#v3 canvas{height:min(72vw,470px);min-height:300px}
+</style></head><body><main>
+<h1>Statistical learning in motion</h1>
+<div class="views" id="views"><button data-v="v2" aria-pressed="true">One input (2D)</button><button data-v="v3" aria-pressed="false">Two inputs (3D)</button></div>
+<section id="v2">
+<p class="sub">Tab 1 uses the whole population, far more data than we could ever collect. Tabs 2 and 3 use the same 50 training points.</p>
+<div class="tabs" id="a-tabs">
+<button data-m="0" style="--c:var(--truth)">1. The ideal answer</button>
+<button data-m="1" style="--c:var(--knn)">2. KNN: average the neighbours</button>
+<button data-m="2" style="--c:var(--lin)">3. Linear regression (polynomial degree)</button>
+</div>
+<div class="stage"><canvas id="a-cv" aria-label="Animated scatter plot"></canvas></div>
+<div class="ctl">
+<button id="a-play">Pause</button>
+<label id="a-sw"><span id="a-sl">x</span><input type="range" id="a-x" min="0" max="10" step="0.01" value="0"></label>
+<label id="a-dw" hidden>Flexibility (polynomial degree) <b id="a-dv">1</b><input type="range" id="a-d" min="1" max="20" value="1"></label>
+<label id="a-kw" hidden>K<input type="range" id="a-k" min="1" max="30" value="5"><span style="display:inline-block;min-width:17em"><b>= <span id="a-kv">5</span></b><span id="a-kf"></span></span></label>
+</div>
+<div id="a-read"></div>
+<p id="a-cap"></p>
+</section>
+<section id="v3" hidden>
+<p class="sub">X1 and X2 are on the floor, Y goes up. Tab 1 uses the whole population; tabs 2 and 3 use the same 50 training points. Drag the plot to rotate it.</p>
+<div class="tabs" id="b-tabs">
+<button data-m="0" style="--c:var(--truth)">1. The ideal answer</button>
+<button data-m="1" style="--c:var(--knn)">2. KNN: average the neighbours</button>
+<button data-m="2" style="--c:var(--lin)">3. Linear regression (polynomial degree)</button>
+</div>
+<div class="stage"><canvas id="b-cv" aria-label="Rotatable 3D scatter plot"></canvas></div>
+<div class="ctl">
+<button id="b-play">Pause</button>
+<label id="b-sw"><span id="b-sl">scan</span><input type="range" id="b-t" min="0" max="120" step="0.1" value="0"></label>
+<label id="b-dw" hidden>Flexibility (polynomial degree) <b id="b-dv">1</b><input type="range" id="b-d" min="1" max="6" value="1"></label>
+<label id="b-kw" hidden>K<input type="range" id="b-k" min="1" max="40" value="10"><span style="display:inline-block;min-width:17em"><b>= <span id="b-kv">10</span></b><span id="b-kf"></span></span></label>
+</div>
+<div id="b-read"></div>
+<p id="b-cap"></p>
+</section>
+<script>
+document.querySelectorAll('#views button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#views button').forEach(c=>c.setAttribute('aria-pressed',c===b));['v2','v3'].forEach(id=>document.getElementById(id).hidden=id!==b.dataset.v)});
+</script>
+<script>(function(){const PFX='a-';
+
+const $=id=>document.getElementById(PFX+id);
+let seed=11;const rnd=()=>(seed=seed*16807%2147483647)/2147483647;
+const gauss=()=>Math.sqrt(-2*Math.log(rnd()+1e-9))*Math.cos(6.2832*rnd());
+const f=x=>1+.6*x+.45*Math.sin(x), SD=.7;
+const mk=n=>Array.from({length:n},()=>{const x=rnd()*10;return{x,y:f(x)+SD*gauss()}});
+const zs=Array.from({length:40},()=>gauss()),zm=zs.reduce((u,z)=>u+z,0)/40;for(let k=0;k<40;k++)zs[k]-=zm;
+const cloud=mk(6000), train=mk(50);
+const mx=train.reduce((a,p)=>a+p.x,0)/50, my=train.reduce((a,p)=>a+p.y,0)/50;
+function solveGE(A,m){for(let i=0;i<m;i++){let q=i;for(let r=i+1;r<m;r++)if(Math.abs(A[r][i])>Math.abs(A[q][i]))q=r;[A[i],A[q]]=[A[q],A[i]];for(let r=i+1;r<m;r++){const k=A[r][i]/A[i][i];for(let c=i;c<=m;c++)A[r][c]-=k*A[i][c]}}const c=Array(m);for(let i=m-1;i>=0;i--){let u=A[i][m];for(let j=i+1;j<m;j++)u-=A[i][j]*c[j];c[i]=u/A[i][i]}return c}
+const cheb=(u,m)=>{const t=[1,u];for(let i=2;i<m;i++)t[i]=2*u*t[i-1]-t[i-2];return t.slice(0,m)};
+function fitP(d){const m=d+1,A=Array.from({length:m},()=>Array(m+1).fill(0));train.forEach(p=>{const q=cheb((p.x-5)/5,m);for(let i=0;i<m;i++){for(let j=0;j<m;j++)A[i][j]+=q[i]*q[j];A[i][m]+=q[i]*p.y}});for(let i=0;i<m;i++)A[i][i]+=1e-9;return solveGE(A,m)}
+const polyC=[];for(let d=1;d<=20;d++)polyC[d]=fitP(d);
+const poly=(c,x)=>{const q=cheb((x-5)/5,c.length);let y=0;for(let i=0;i<c.length;i++)y+=c[i]*q[i];return y};let deg=1;
+function stack(k){let q=(Math.imul(k+7,2654435761)>>>0)%2147483646+1;const r=()=>(q=q*16807%2147483647)/2147483647,g=()=>Math.sqrt(-2*Math.log(r()+1e-9))*Math.cos(6.2832*r());const n=30+Math.floor(r()*90),z=Array.from({length:n},g),m=z.reduce((a,b)=>a+b,0)/n;return z.map(v=>v-m)}
+const cv=$('cv'),ctx=cv.getContext('2d');
+let mode=0,x0=0,K=5,playing=!matchMedia('(prefers-reduced-motion:reduce)').matches,last=0;
+const cap=[
+"Imagine a huge population where many observations share exactly the same x. Only the points on the dashed vertical line count, no neighbours. Their Y values differ, so no method can hit them all; the best guess is their average, E(Y | X = x). Slide across and that average traces the pink curve: the regression function. The scatter around it is irreducible error. The faint grey dots are one sample from that population. In real data we rarely have several points at exactly one x, which is why KNN (next tab) has to borrow neighbours.",
+"At every x, KNN does two things. 1) It picks the K training points closest to x, looking only at the X axis (the green bar on the axis; Y plays no role in the choice). 2) It averages the Y values of those K points (dashed line from the y-axis). That average is the prediction, the green dot. Sweeping x builds the green curve. K controls flexibility: small K is very flexible (follows every wiggle: low bias, high variance); large K is rigid and smooth but can miss real shape.",
+"Fit a polynomial of the chosen degree to the training points by minimising the squared vertical gaps. Degree 1 is a straight line: low flexibility, simple and interpretable, but it cannot follow the bends of the truth (dashed pink). Raise the degree and the curve becomes more flexible and training error falls, until it starts chasing noise (overfitting)."];
+const lab=["x","x","fit"];
+function setMode(m){mode=m;x0=0;playing=true;$('play').textContent='Pause';
+document.querySelectorAll('#'+PFX+'tabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m==m));
+$('kw').hidden=m!=1;$('dw').hidden=m!=2;$('sw').hidden=m==2;$('play').hidden=m==2;if(m==2)playing=false;$('sl').textContent=lab[m];$('cap').textContent=cap[m];}
+document.querySelectorAll('#'+PFX+'tabs button').forEach(b=>b.onclick=()=>setMode(+b.dataset.m));
+$('play').onclick=()=>{if(mode==2&&!playing){x0=0;playing=true}else playing=!playing;$('play').textContent=playing?'Pause':(mode==2?'Replay':'Play')};
+$('x').oninput=e=>{x0=+e.target.value;playing=false;$('play').textContent='Play'};
+const flex=(k,m)=>{const r=k/m;return r<.1?'very high':r<.25?'high':r<.5?'medium':r<.75?'low':'very low'};
+const upK=()=>{$('kv').textContent=K;$('kf').textContent=' · flexibility: '+flex(K,30)};$('k').oninput=e=>{K=+e.target.value;upK()};upK();
+$('d').oninput=e=>{deg=+e.target.value;$('dv').textContent=deg};
+function knn(x){return train.map(p=>({p,d:Math.abs(p.x-x)})).sort((a,b)=>a.d-b.d).slice(0,K).map(o=>o.p)}
+const avg=a=>a.reduce((s,p)=>s+p.y,0)/a.length;
+function resize(){const d=devicePixelRatio||1;cv.width=cv.clientWidth*d;cv.height=cv.clientHeight*d;ctx.setTransform(d,0,0,d,0,0)}
+addEventListener('resize',resize);
+function pos(e){const r=cv.getBoundingClientRect();x0=Math.max(0,Math.min(10,(e.clientX-r.left-42)/(r.width-54)*10));playing=false;$('play').textContent='Play'}
+let drag=false;cv.onpointerdown=e=>{if(mode<2){drag=true;pos(e)}};cv.onpointermove=e=>{if(drag)pos(e)};addEventListener('pointerup',()=>drag=false);
+function draw(){
+const W=cv.clientWidth,H=cv.clientHeight,pl=42,pr=12,pt=10,pb=28;
+const X=x=>pl+x/10*(W-pl-pr),Y=y=>H-pb-y/10*(H-pt-pb);
+const S=getComputedStyle(document.documentElement),C=n=>S.getPropertyValue(n).trim();
+ctx.clearRect(0,0,W,H);ctx.font='12px system-ui';ctx.fillStyle=C('--mut');ctx.strokeStyle=C('--line');ctx.lineWidth=1;
+for(let v=0;v<=10;v+=2){ctx.beginPath();ctx.moveTo(pl,Y(v));ctx.lineTo(W-pr,Y(v));ctx.stroke();ctx.fillText(v,pl-18,Y(v)+4)}
+for(let v=0;v<=10;v+=2)ctx.fillText(v,X(v)-3,H-10);
+ctx.fillText('X',W-pr-8,H-10);ctx.fillText('Y',6,pt+10);
+const line=(fn,to,col,w,dash)=>{ctx.beginPath();ctx.setLineDash(dash||[]);for(let x=0;x<=to+1e-6;x+=.05){x?ctx.lineTo(X(x),Y(fn(x))):ctx.moveTo(X(x),Y(fn(x)))}ctx.strokeStyle=col;ctx.lineWidth=w;ctx.stroke();ctx.setLineDash([])};
+const dot=(x,y,r,col)=>{ctx.beginPath();ctx.arc(X(x),Y(y),r,0,7);ctx.fillStyle=col;ctx.fill()};
+const T=C('--truth'),G=C('--knn'),B=C('--lin'),P=C('--pt');let msg='';
+if(mode==0){
+const xs=x0,m=f(xs);
+ctx.globalAlpha=.2;cloud.forEach(p=>dot(p.x,p.y,1.8,P));ctx.globalAlpha=1;
+ctx.beginPath();ctx.moveTo(X(xs),pt);ctx.lineTo(X(xs),H-pb);ctx.strokeStyle=T;ctx.lineWidth=1.5;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
+line(f,xs,T,3);const zz=stack(Math.round(xs*10));zz.forEach(z=>dot(xs,m+SD*z,3.2,T));
+const dir=xs>6?-1:1,nb=14,bw=(6*SD)/nb,cnt=Array(nb).fill(0);zz.forEach(z=>{const k=Math.floor((z*SD+3*SD)/bw);if(k>=0&&k<nb)cnt[k]++});
+const mc=Math.max(...cnt);ctx.globalAlpha=.3;ctx.fillStyle=T;cnt.forEach((c,k)=>{const y1=Y(m-3*SD+k*bw),y2=Y(m-3*SD+(k+1)*bw),len=c/mc*70;ctx.fillRect(dir>0?X(xs)+8:X(xs)-8-len,y2+1,len,y1-y2-2)});ctx.globalAlpha=1;
+ctx.fillStyle=T;ctx.font='13px system-ui';ctx.textAlign=dir>0?'left':'right';ctx.fillText('their average',X(xs)+dir*46,Y(m)-8);ctx.textAlign='left';
+ctx.beginPath();ctx.moveTo(X(xs-.35),Y(m));ctx.lineTo(X(xs+.35),Y(m));ctx.strokeStyle=T;ctx.lineWidth=2;ctx.stroke();dot(xs,m,7,T);
+msg=`x = ${xs.toFixed(2)} exactly: the Y values at this x average ${m.toFixed(2)}`;
+}else if(mode==1){
+const nb=knn(x0),m=avg(nb),r=Math.max(...nb.map(p=>Math.abs(p.x-x0))),ax=H-pb,mu=C('--mut');
+ctx.globalAlpha=.06;ctx.fillStyle=G;ctx.fillRect(X(x0-r),pt,X(x0+r)-X(x0-r),ax-pt);ctx.globalAlpha=1;
+line(f,10,T,1.5,[5,5]);
+train.forEach(p=>dot(p.x,p.y,3.5,P));
+ctx.beginPath();ctx.moveTo(X(x0-r),ax);ctx.lineTo(X(x0+r),ax);ctx.strokeStyle=G;ctx.lineWidth=5;ctx.globalAlpha=.75;ctx.stroke();ctx.globalAlpha=1;
+const few=K<=8;
+nb.forEach(p=>{if(few){ctx.strokeStyle=G;ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(X(p.x),Y(p.y));ctx.lineTo(X(p.x),ax);ctx.globalAlpha=.7;ctx.stroke();
+ctx.beginPath();ctx.moveTo(X(p.x),Y(p.y));ctx.lineTo(pl,Y(p.y));ctx.globalAlpha=.45;ctx.stroke();ctx.globalAlpha=1}
+ctx.fillStyle=G;ctx.beginPath();ctx.arc(X(p.x),ax,3,0,7);ctx.fill();ctx.beginPath();ctx.arc(pl,Y(p.y),3,0,7);ctx.fill();dot(p.x,p.y,few?5.5:4.2,G)});
+line(x=>avg(knn(x)),x0,G,3.5);
+ctx.beginPath();ctx.moveTo(pl,Y(m));ctx.lineTo(X(x0),Y(m));ctx.strokeStyle=G;ctx.lineWidth=1.6;ctx.globalAlpha=.85;ctx.setLineDash([5,4]);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+ctx.fillStyle=G;ctx.beginPath();ctx.arc(pl,Y(m),6,0,7);ctx.fill();dot(x0,m,8,G);
+ctx.font='13px system-ui';ctx.fillStyle=mu;ctx.fillText('1) pick the '+K+' closest points along X (green bar on the axis)',pl+8,pt+14);ctx.fillText('2) average their Y values (dashed line) = prediction',pl+8,pt+32);
+msg=`x = ${x0.toFixed(1)}: average of the ${K} nearest Y values = ${m.toFixed(2)}`;
+}else{
+const e=1,cc=polyC[deg],fn=x=>my+e*(poly(cc,x)-my);
+line(f,10,T,1.5,[5,5]);
+let sse=0;train.forEach(q=>{const r=q.y-fn(q.x);sse+=r*r;ctx.beginPath();ctx.moveTo(X(q.x),Y(q.y));ctx.lineTo(X(q.x),Y(fn(q.x)));ctx.strokeStyle=B;ctx.globalAlpha=.6;ctx.lineWidth=1.5;ctx.stroke();ctx.globalAlpha=1});
+train.forEach(q=>dot(q.x,q.y,3.5,P));line(x=>Math.max(-1,Math.min(11,fn(x))),10,B,3.5);
+msg=`Average squared error on the training data = ${(sse/50).toFixed(2)}`+(e>.99?' · training error only: it always falls as flexibility rises':'');
+}
+$('read').textContent=msg;}
+function tick(t){if(!cv.offsetParent){last=t;requestAnimationFrame(tick);return}if(cv.width!==Math.round(cv.clientWidth*(devicePixelRatio||1)))resize();const dt=Math.min(.05,(t-last)/1000||0);last=t;
+if(playing){x0+=dt*(mode==2?1.6:1.1);if(mode==2){if(x0>=7){x0=7;playing=false;$('play').textContent='Replay'}}else if(x0>10)x0=0}
+$('x').value=x0;draw();requestAnimationFrame(tick)}
+resize();setMode(0);requestAnimationFrame(tick);
+
+})();</script>
+<script>(function(){const PFX='b-';
+
+const $=id=>document.getElementById(PFX+id);
+let seed=5;const rnd=()=>(seed=seed*16807%2147483647)/2147483647;
+const gauss=()=>Math.sqrt(-2*Math.log(rnd()+1e-9))*Math.cos(6.2832*rnd());
+const f=(a,b)=>.5+.3*a+.25*b+.5*Math.sin(.8*a)*Math.cos(.8*b),SD=.6,N=41,NN=N*N,st=.25,GS=11;
+const zs=Array.from({length:40},()=>gauss()),zm=zs.reduce((u,z)=>u+z,0)/40;for(let k=0;k<40;k++)zs[k]-=zm;
+const bg=Array.from({length:10000},()=>{const a=rnd()*10,b=rnd()*10;return{a,b,y:f(a,b)+SD*gauss()}});
+const train=Array.from({length:50},()=>{const a=rnd()*10,b=rnd()*10;return{a,b,y:f(a,b)+SD*gauss()}});
+const n=train.length,m1=train.reduce((s,p)=>s+p.a,0)/n,m2=train.reduce((s,p)=>s+p.b,0)/n,my=train.reduce((s,p)=>s+p.y,0)/n;
+function solveGE(A,m){for(let i=0;i<m;i++){let q=i;for(let r=i+1;r<m;r++)if(Math.abs(A[r][i])>Math.abs(A[q][i]))q=r;[A[i],A[q]]=[A[q],A[i]];for(let r=i+1;r<m;r++){const k=A[r][i]/A[i][i];for(let c=i;c<=m;c++)A[r][c]-=k*A[i][c]}}const c=Array(m);for(let i=m-1;i>=0;i--){let u=A[i][m];for(let j=i+1;j<m;j++)u-=A[i][j]*c[j];c[i]=u/A[i][i]}return c}
+const terms=d=>{const r=[];for(let i=0;i<=d;i++)for(let j=0;i+j<=d;j++)r.push([i,j]);return r};
+const cheb=(u,m)=>{const t=[1,u];for(let i=2;i<m;i++)t[i]=2*u*t[i-1]-t[i-2];return t.slice(0,m)};
+const basis=(tm,a,b)=>{const mu=cheb((a-5)/5,10),mv=cheb((b-5)/5,10);return tm.map(([i,j])=>mu[i]*mv[j])};
+function fitP(d){const tm=terms(d),m=tm.length,A=Array.from({length:m},()=>Array(m+1).fill(0));train.forEach(p=>{const z=basis(tm,p.a,p.b);for(let i=0;i<m;i++){for(let j=0;j<m;j++)A[i][j]+=z[i]*z[j];A[i][m]+=z[i]*p.y}});for(let i=0;i<m;i++)A[i][i]+=1e-6;return{tm,c:solveGE(A,m)}}
+const polyC=[];for(let d=1;d<=6;d++)polyC[d]=fitP(d);
+const pv=(P,a,b)=>basis(P.tm,a,b).reduce((u,z,i)=>u+z*P.c[i],0);let deg=1;
+function stack(k){let q=(Math.imul(k+7,2654435761)>>>0)%2147483646+1;const r=()=>(q=q*16807%2147483647)/2147483647,g=()=>Math.sqrt(-2*Math.log(r()+1e-9))*Math.cos(6.2832*r());const z=Array.from({length:80},g),m=z.reduce((a,b)=>a+b,0)/80;return z.map(v=>v-m)}
+const cv=$('cv'),ctx=cv.getContext('2d');
+let mode=0,t=0,K=10,playing=!matchMedia('(prefers-reduced-motion:reduce)').matches,last=0,az=-.65,el=.38,W=1,H=1,sc=1;
+const cap=[
+"Now Y depends on two inputs, so 'exactly this x' becomes an exact spot (x1, x2) on the floor, and that spot can be anywhere, not only where we have data. Picture many possible observations stacked on the dashed vertical line, with no neighbours. Their average is the pink dot, and as the spot scans the floor these averages build the regression surface E(Y | X1, X2). The faint grey dots are one sample of the data we would actually see.",
+"At every spot (x1, x2), KNN does two things. 1) It picks the K training points closest to the spot, looking only at the floor (the circle; heights play no role in the choice). 2) It averages the heights (Y values) of those K points, read across onto the central line. That average is the prediction, the green dot. Scanning builds the KNN surface. K controls flexibility: small K gives a very flexible, bumpy surface; large K a rigid, smooth one.",
+"Fit a polynomial surface of the chosen degree by minimising the squared vertical gaps. Degree 1 is a flat plane, y = θ0 + θ1·x1 + θ2·x2: low flexibility, simple, and it captures only the overall tilt. Raise the degree and the surface can bend, training error falls, and eventually it chases noise (overfitting). The true surface is the faint pink sheet."];
+const lab=["scan","scan","fit"];
+function setMode(m){mode=m;t=0;playing=true;$('play').textContent='Pause';
+document.querySelectorAll('#'+PFX+'tabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m==m));
+$('kw').hidden=m!=1;$('dw').hidden=m!=2;$('sw').hidden=m==2;$('play').hidden=m==2;if(m==2)playing=false;$('sl').textContent=lab[m];$('cap').textContent=cap[m]}
+document.querySelectorAll('#'+PFX+'tabs button').forEach(b=>b.onclick=()=>setMode(+b.dataset.m));
+$('play').onclick=()=>{if(mode==2&&!playing){t=0;playing=true}else playing=!playing;$('play').textContent=playing?'Pause':(mode==2?'Replay':'Play')};
+$('t').oninput=e=>{t=+e.target.value;playing=false;$('play').textContent='Play'};
+const flex=(k,m)=>{const r=k/m;return r<.1?'very high':r<.25?'high':r<.5?'medium':r<.75?'low':'very low'};
+const upK=()=>{$('kv').textContent=K;$('kf').textContent=' · flexibility: '+flex(K,40)};$('k').oninput=e=>{K=+e.target.value;cache={};upK()};upK();
+$('d').oninput=e=>{deg=+e.target.value;$('dv').textContent=deg};
+function resize(){const d=devicePixelRatio||1;cv.width=cv.clientWidth*d;cv.height=cv.clientHeight*d;ctx.setTransform(d,0,0,d,0,0)}
+addEventListener('resize',resize);
+let drag=null;cv.onpointerdown=e=>{drag=[e.clientX,e.clientY];cv.style.cursor='grabbing'};
+cv.onpointermove=e=>{if(!drag)return;az+=(e.clientX-drag[0])*.01;el=Math.max(.05,Math.min(1.35,el+(e.clientY-drag[1])*.01));drag=[e.clientX,e.clientY]};
+addEventListener('pointerup',()=>{drag=null;cv.style.cursor='grab'});
+function P(a,b,y){const X=a-5,Z=b-5,V=y*1.25-5,c=Math.cos(az),s=Math.sin(az),xr=X*c-Z*s,zr=X*s+Z*c;return[W/2+xr*sc,H/2+8-(V*Math.cos(el)-zr*Math.sin(el))*sc]}
+const nearest=(a,b)=>train.map(p=>({p,d:Math.hypot(p.a-a,p.b-b)})).sort((u,v)=>u.d-v.d).slice(0,K);
+let cache={};
+function fit(i,j){const k=i+','+j;if(!cache[k]){const r=nearest(i*st,j*st);cache[k]=r.reduce((s,o)=>s+o.p.y,0)/r.length}return cache[k]}
+function draw(){
+W=cv.clientWidth;H=cv.clientHeight;sc=Math.min(W/18,H/17);ctx.clearRect(0,0,W,H);
+const S=getComputedStyle(document.documentElement),C=n=>S.getPropertyValue(n).trim(),T=C('--truth'),G=C('--knn'),B=C('--lin'),Pt=C('--pt'),L=C('--line'),M=C('--mut');
+const seg=(p,q,col,w,al,dash)=>{ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(q[0],q[1]);ctx.strokeStyle=col;ctx.lineWidth=w;ctx.globalAlpha=al;ctx.setLineDash(dash||[]);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1};
+const dot=(a,b,y,r,col,al)=>{const p=P(a,b,y);ctx.beginPath();ctx.arc(p[0],p[1],r,0,7);ctx.globalAlpha=al==null?1:al;ctx.fillStyle=col;ctx.fill();ctx.globalAlpha=1};
+const ln=(a,b,c,d,y1,y2,col,w,al,dash)=>seg(P(a,b,y1),P(c,d,y2),col,w,al,dash);
+// box
+const cor=[[0,0],[10,0],[10,10],[0,10]];
+for(let k=0;k<4;k++){const[a,b]=cor[k],[c,d]=cor[(k+1)%4];ln(a,b,c,d,0,0,L,1,1);ln(a,b,c,d,8,8,L,1,.6);ln(a,b,a,b,0,8,L,1,.6)}
+ln(0,0,10,0,0,0,M,2,1);ln(0,0,0,10,0,0,M,2,1);ln(0,0,0,0,0,8,M,2,1);
+ctx.fillStyle=M;ctx.font='13px system-ui';
+[['x1',10.9,0,0],['x2',0,10.9,0],['y',0,0,8.8]].forEach(([s,a,b,y])=>{const p=P(a,b,y);ctx.fillText(s,p[0]-6,p[1]+4)});
+const trueMesh=al=>{for(let i=0;i<GS;i++)for(let j=0;j<GS;j++){if(i<GS-1)ln(i,j,i+1,j,f(i,j),f(i+1,j),T,1.2,al,[4,4]);if(j<GS-1)ln(i,j,i,j+1,f(i,j),f(i,j+1),T,1.2,al,[4,4])}};
+const uu=Math.min(.9999,t/120)*N,qr=Math.floor(uu),fr=uu-qr,qa=(qr%2?1-fr:fr)*10,qb=qr*st;
+const vis=(i,j)=>j<qr||(j==qr&&(qr%2?i*st>=qa:i*st<=qa));
+const D=(a,b,y)=>((a-5)*Math.sin(az)+(b-5)*Math.cos(az))*Math.cos(el)+(y*1.25-5)*Math.sin(el);
+const surf=(val,col,al,all,shade)=>{const qs=[];
+for(let i=0;i<N-1;i++)for(let j=0;j<N-1;j++){if(!all&&!(vis(i,j+1)&&vis(i+1,j+1)))continue;
+const y00=val(i,j),y10=val(i+1,j),y11=val(i+1,j+1),y01=val(i,j+1),a0=i*st,a1=a0+st,b0=j*st,b1=b0+st;
+qs.push({d:D((a0+a1)/2,(b0+b1)/2,(y00+y11)/2),q:[P(a0,b0,y00),P(a1,b0,y10),P(a1,b1,y11),P(a0,b1,y01)],k:(y10+y11-y00-y01)*3})}
+qs.sort((u,v)=>u.d-v.d);
+qs.forEach(o=>{ctx.beginPath();o.q.forEach((c,n)=>n?ctx.lineTo(c[0],c[1]):ctx.moveTo(c[0],c[1]));ctx.closePath();
+ctx.lineWidth=.8;ctx.globalAlpha=al;ctx.fillStyle=col;ctx.strokeStyle=col;ctx.fill();ctx.stroke();if(shade){const k=Math.max(-.4,Math.min(.4,o.k)),sc2=k>0?'#fff':'#000';ctx.globalAlpha=Math.abs(k)*al;ctx.fillStyle=sc2;ctx.strokeStyle=sc2;ctx.fill();ctx.stroke()}});ctx.globalAlpha=1};
+let msg='';
+if(mode==0){
+surf((i,j)=>f(i*st,j*st),T,.9,false,true);ctx.globalAlpha=.2;ctx.fillStyle=Pt;bg.forEach(p=>{const q=P(p.a,p.b,p.y);ctx.fillRect(q[0]-.8,q[1]-.8,1.6,1.6)});ctx.globalAlpha=1;
+ln(qa,qb,qa,qb,0,8,T,1.5,.9,[4,4]);const m=f(qa,qb);
+stack(Math.round(qa*2)*100+Math.round(qb*2)).forEach(z=>dot(qa,qb,m+SD*z,3.2,T,.85));dot(qa,qb,m,7,T);
+msg=`Spot (x1, x2) = (${qa.toFixed(2)}, ${qb.toFixed(2)}): the Y values possible at exactly this spot average ${m.toFixed(2)}`;
+}else if(mode==1){
+const nb=nearest(qa,qb),m=nb.reduce((s,o)=>s+o.p.y,0)/nb.length,r=nb[nb.length-1].d;
+surf((i,j)=>f(i*st,j*st),T,.12,true,false);
+ctx.beginPath();for(let k=0;k<=48;k++){const q=P(qa+r*Math.cos(k/48*6.2832),qb+r*Math.sin(k/48*6.2832),0);k?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1])}
+ctx.strokeStyle=G;ctx.lineWidth=2;ctx.globalAlpha=.9;ctx.stroke();ctx.globalAlpha=.12;ctx.fillStyle=G;ctx.fill();ctx.globalAlpha=1;
+train.forEach(p=>dot(p.a,p.b,p.y,3,Pt,.8));
+surf(fit,G,.9,false,true);
+const few=K<=8;nb.forEach(o=>{const p=o.p;if(few){ln(p.a,p.b,p.a,p.b,0,p.y,G,1.3,.7);ln(p.a,p.b,qa,qb,p.y,p.y,G,1.2,.5)}dot(p.a,p.b,0,3,G);dot(qa,qb,p.y,3,G,.9);dot(p.a,p.b,p.y,few?5:3.8,G)});
+ln(qa,qb,qa,qb,0,8,G,1.5,.7,[4,4]);dot(qa,qb,0,5,G,.9);dot(qa,qb,m,8,G);
+msg=`New spot (${qa.toFixed(2)}, ${qb.toFixed(2)}) has no data: average of its ${K} nearest Y values = ${m.toFixed(2)}`;
+}else{
+const e=1,g=(a,b)=>Math.max(-1,Math.min(9.5,my+e*(pv(polyC[deg],a,b)-my)));
+surf((i,j)=>f(i*st,j*st),T,.14,true,false);
+surf((i,j)=>g(i*st,j*st),B,.75,true,true);
+let sse=0;train.forEach(q=>{const y=g(q.a,q.b);sse+=(q.y-y)**2;ln(q.a,q.b,q.a,q.b,q.y,y,B,1.3,.6);dot(q.a,q.b,q.y,3.2,Pt,.95)});
+msg=`Average squared error on the training data = ${(sse/n).toFixed(2)}`+(e>.99?' · training error only: it always falls as flexibility rises':'');
+}
+$('read').textContent=msg}
+function tick(ts){if(!cv.offsetParent){last=ts;requestAnimationFrame(tick);return}if(cv.width!==Math.round(cv.clientWidth*(devicePixelRatio||1)))resize();const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
+if(playing){t+=dt*(mode==2?30:9);if(mode==2){if(t>=80){t=80;playing=false;$('play').textContent='Replay'}}else if(t>=120)t=0}
+$('t').value=t;draw();requestAnimationFrame(tick)}
+resize();setMode(0);requestAnimationFrame(tick);
+
+})();</script>
+</main></body></html>

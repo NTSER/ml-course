@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Train / test split, step by step</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f5f6f8;--fg:#1b2130;--mut:#5b6474;--pt:#8791a3;--card:#fff;--line:#d8dce4;--tr:#2b59d9;--te:#d9730d}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#11141b;--fg:#e8ebf2;--mut:#98a1b3;--pt:#6f7a8f;--card:#181c25;--line:#2b3140;--tr:#7c9cff;--te:#ffa94d}}
+:root[data-theme="dark"]{--bg:#11141b;--fg:#e8ebf2;--mut:#98a1b3;--pt:#6f7a8f;--card:#181c25;--line:#2b3140;--tr:#7c9cff;--te:#ffa94d}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:900px;margin:0 auto;padding:20px 16px 32px}
+h1{font:600 26px/1.2 Georgia,"Iowan Old Style",serif;margin:0 0 4px}
+p.sub{margin:0 0 14px;color:var(--mut)}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:8px 14px;border-radius:8px}
+button:disabled{opacity:.4;cursor:default}
+button.pri{background:var(--fg);color:var(--bg);border-color:var(--fg);font-weight:600}
+button:focus-visible,input:focus-visible{outline:2px solid var(--tr);outline-offset:2px}
+.ds{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;color:var(--mut);font-size:14px}.ds button{padding:6px 12px;font-size:14px}.ds button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg);font-weight:600}
+.steps{display:flex;gap:6px;margin-bottom:10px}
+.steps i{flex:1;height:6px;border-radius:3px;background:var(--line)}
+.steps i.on{background:var(--fg)}
+.stage{display:flex;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;flex-wrap:wrap}
+canvas{display:block;height:min(52vw,360px);min-height:240px;touch-action:none}
+#c1{flex:2 1 380px;width:100%;min-width:0}#c2{flex:1 1 260px;min-width:0;width:100%}
+.ctl{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.ctl label{color:var(--mut);font-size:14px;display:flex;gap:8px;align-items:center}
+input[type=range]{width:150px}
+#read{font-weight:600;min-height:1.5em}
+.tr{color:var(--tr)}.te{color:var(--te)}
+h2{font:600 19px/1.3 system-ui,sans-serif;margin:10px 0 2px}
+#cap{color:var(--mut);margin:0;max-width:72ch}
+</style></head><body><main>
+<h1>Train / test split, step by step</h1>
+<p class="sub">Goal: judge how well a model will do on data it has never seen.</p>
+<div class="ds" id="ds"><span>Dataset:</span><button data-i="0" aria-pressed="true">Curved truth</button><button data-i="1" aria-pressed="false">Nearly linear truth</button><button data-i="2" aria-pressed="false">Wiggly truth, low noise</button></div>
+<div class="steps" id="steps"><i></i><i></i><i></i><i></i><i></i></div>
+<div class="stage"><canvas id="c1" aria-label="Scatter plot with model"></canvas><canvas id="c2" aria-label="Error versus flexibility" hidden></canvas></div>
+<div class="ctl">
+<button id="back">Back</button><button id="next" class="pri">Next</button>
+<button id="again" hidden>New random split</button>
+<label id="dw" hidden>Flexibility (polynomial degree) <b id="dv">3</b><input type="range" id="d" min="1" max="12" value="3"></label>
+<label id="rw" hidden><input type="checkbox" id="rtr"> show training errors too</label>
+</div>
+<div id="read"></div>
+<h2 id="ttl"></h2><p id="cap"></p>
+<script>
+const $=id=>document.getElementById(id);
+let seed=21;const rnd=()=>(seed=seed*16807%2147483647)/2147483647;
+const gauss=()=>Math.sqrt(-2*Math.log(rnd()+1e-9))*Math.cos(6.2832*rnd());
+const SD=1,N=80,NT=24,DM=12;
+const lag=(xs,ys)=>u=>ys.reduce((t,y,i)=>t+y*xs.reduce((q,xj,j)=>j==i?q:q*(u-xj)/(xs[i]-xj),1),0);
+const l3=lag([0,.3,.65,1],[27,11.8,13.8,-11]);
+const DS=[
+{n:'Curved truth',f:x=>3+2.2*Math.sin(.65*x)+.12*x,dom:[-2,9],cap:6,seed:21,note:'Here the truth is moderately curved: test error is lowest at a middle flexibility and then rises. Too simple underfits, too flexible overfits.'},
+{n:'Nearly linear truth',f:x=>2.5+.95*x+.1*Math.sin(.9*x),dom:[0,15],cap:6,seed:125,note:'Here the truth is almost a straight line: the simplest models do best on test data, and extra flexibility only chases noise, so test error rises while training error keeps falling.'},
+{n:'Wiggly truth, low noise',f:x=>l3(x/10),dom:[-16,32],cap:40,seed:9,note:'Here the truth is wiggly and the noise is small compared with the signal: a straight line badly underfits (high error on both sets), and more flexible models do best. Test error flattens out rather than collapsing.'}];
+DS.forEach(d=>{seed=d.seed;d.pts=Array.from({length:N},()=>{const x=rnd()*10;return{x,y:d.f(x)+SD*gauss()}})});
+let ds=0,pts=DS[0].pts;
+let test=new Set(),ord=[],coefs=[],mTr=[],mTe=[],splitN=0,step=0,D=3;
+function fitPoly(P,d){const m=d+1,A=Array.from({length:m},()=>Array(m+1).fill(0));
+P.forEach(p=>{const u=(p.x-5)/5,pw=[1];for(let i=1;i<2*m;i++)pw[i]=pw[i-1]*u;for(let i=0;i<m;i++){for(let j=0;j<m;j++)A[i][j]+=pw[i+j];A[i][m]+=pw[i]*p.y}});
+for(let i=0;i<m;i++)A[i][i]+=1e-9;
+for(let i=0;i<m;i++){let mx=i;for(let r=i+1;r<m;r++)if(Math.abs(A[r][i])>Math.abs(A[mx][i]))mx=r;[A[i],A[mx]]=[A[mx],A[i]];for(let r=i+1;r<m;r++){const k=A[r][i]/A[i][i];for(let c=i;c<=m;c++)A[r][c]-=k*A[i][c]}}
+const c=Array(m);for(let i=m-1;i>=0;i--){let s=A[i][m];for(let j=i+1;j<m;j++)s-=A[i][j]*c[j];c[i]=s/A[i][i]}return c}
+const pred=(c,x)=>{const u=(x-5)/5;let y=0,p=1;for(const a of c){y+=a*p;p*=u}return y};
+function split(){let s=1000+splitN*7919;const r=()=>(s=s*16807%2147483647)/2147483647;
+const sh=()=>{const a=[...Array(N).keys()];for(let i=N-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+test=new Set(sh().slice(0,NT));sh().forEach((k,pos)=>ord[k]=pos);
+const tr=pts.filter((_,i)=>!test.has(i)),te=pts.filter((_,i)=>test.has(i));
+for(let d=1;d<=DM;d++){const c=fitPoly(tr,d);coefs[d]=c;const m=a=>a.reduce((u,p)=>u+(p.y-pred(c,p.x))**2,0)/a.length;mTr[d]=m(tr);mTe[d]=m(te)}}
+split();
+const T=[["All the data we have","We have 80 labelled observations (x, y). We want a model that predicts well on new data it has never seen. How can we check that honestly?"],
+["Split it at random","Deal every observation at random into a training set (blue, 56 points) or a test set (orange, 24 points). Random dealing makes both sets look alike. Press 'New random split' to deal again."],
+["Train on the training set only","The model learns from the blue points alone. The orange test points are locked away: the model never sees them while it is being fitted. Change the flexibility to get a different model."],
+["Test on the held-out set","Now unlock the test points. For each one, compare the model's prediction with its true y, square the gap and average: the test MSE. This estimates performance on new data. Training MSE only says how well the model matches data it already saw."],
+["Why the test set matters","More flexibility always lowers training error, but test error eventually climbs again: overfitting. Training error alone would choose the wildest model. (In practice, tune flexibility with a validation set or cross-validation and use the test set once, at the very end.)"]];
+const c1=$('c1'),c2=$('c2'),x1=c1.getContext('2d'),x2=c2.getContext('2d');
+const A={deal:0,dim:0,fit:0,res:0};
+const toward=(v,t,s)=>v<t?Math.min(t,v+s):Math.max(t,v-s);
+function updCap(){$('cap').textContent=T[step][1]+(step==4?' '+DS[ds].note:'')}
+function setStep(n){step=Math.max(0,Math.min(4,n));
+document.querySelectorAll('#steps i').forEach((e,i)=>e.classList.toggle('on',i<=step));
+$('ttl').textContent=`Step ${step+1} of 5: ${T[step][0]}`;updCap();
+$('back').disabled=step==0;$('next').disabled=step==4;$('again').hidden=step<1;$('dw').hidden=step<2;$('rw').hidden=step<3;c2.hidden=step<4}
+$('back').onclick=()=>setStep(step-1);$('next').onclick=()=>setStep(step+1);
+addEventListener('keydown',e=>{if(e.key=='ArrowRight')setStep(step+1);if(e.key=='ArrowLeft')setStep(step-1)});
+$('again').onclick=()=>{splitN++;split();A.deal=0};
+document.querySelectorAll('#ds button').forEach(b=>b.onclick=()=>{ds=+b.dataset.i;pts=DS[ds].pts;document.querySelectorAll('#ds button').forEach(c=>c.setAttribute('aria-pressed',c===b));split();updCap()});
+$('d').oninput=e=>{D=+e.target.value;$('dv').textContent=D};
+function size(c,x){const d=devicePixelRatio||1,w=Math.round(c.clientWidth*d),h=Math.round(c.clientHeight*d);if(c.width!==w||c.height!==h){c.width=w;c.height=h;x.setTransform(d,0,0,d,0,0)}}
+const col=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let last=0;
+function drawMain(){size(c1,x1);const W=c1.clientWidth,H=c1.clientHeight,pl=34,pr=10,pt=10,pb=26,ctx=x1;
+const X=x=>pl+x/10*(W-pl-pr),[lo,hi]=DS[ds].dom,Y=y=>H-pb-(y-lo)/(hi-lo)*(H-pt-pb);
+const TR=col('--tr'),TE=col('--te'),P=col('--pt'),L=col('--line'),M=col('--mut');
+ctx.clearRect(0,0,W,H);ctx.font='12px system-ui';ctx.fillStyle=M;ctx.strokeStyle=L;ctx.lineWidth=1;
+const gs=(hi-lo)>30?10:(hi-lo)>14?5:2;for(let v=Math.ceil(lo/gs)*gs;v<=hi;v+=gs){ctx.beginPath();ctx.moveTo(pl,Y(v));ctx.lineTo(W-pr,Y(v));ctx.stroke();ctx.fillText(v,pl-16,Y(v)+4)}
+for(let v=0;v<=10;v+=2)ctx.fillText(v,X(v)-3,H-8);ctx.fillText('x',W-pr-6,H-8);ctx.fillText('y',6,pt+10);
+const c=coefs[D],cl=y=>Math.max(lo-1,Math.min(hi+1,y));
+// residuals
+if(A.res>0){pts.forEach((p,i)=>{const isT=test.has(i);if(!isT&&!$('rtr').checked)return;const y=cl(pred(c,p.x));
+ctx.beginPath();ctx.moveTo(X(p.x),Y(p.y));ctx.lineTo(X(p.x),Y(p.y+(y-p.y)*A.res));ctx.strokeStyle=isT?TE:TR;ctx.globalAlpha=isT?.9:.4;ctx.lineWidth=isT?2:1.2;ctx.stroke();ctx.globalAlpha=1})}
+// points
+const nDealt=A.deal*N;let trN=0,teN=0;
+pts.forEach((p,i)=>{const isT=test.has(i),dealt=nDealt>ord[i];let r=3.6,col_=P,al=1,ring=false;
+if(dealt){col_=isT?TE:TR;if(isT)teN++;else trN++;const age=nDealt-ord[i];if(age<4)r=3.6+(4-age)*1.3;if(isT&&A.dim>.5){ring=true;al=.55}}
+const cx=X(p.x),cy=Y(p.y);ctx.beginPath();ctx.arc(cx,cy,r,0,7);ctx.globalAlpha=al;
+if(ring){ctx.strokeStyle=col_;ctx.lineWidth=1.8;ctx.setLineDash([2.5,2.5]);ctx.stroke();ctx.setLineDash([])}else{ctx.fillStyle=col_;ctx.fill()}ctx.globalAlpha=1});
+// curve
+if(A.fit>0){ctx.save();ctx.beginPath();ctx.rect(pl,pt,W-pl-pr,H-pt-pb);ctx.clip();ctx.beginPath();
+for(let x=0;x<=10*A.fit+1e-6;x+=.05){const y=cl(pred(c,x));x?ctx.lineTo(X(x),Y(y)):ctx.moveTo(X(x),Y(y))}ctx.strokeStyle=TR;ctx.lineWidth=3.2;ctx.stroke();ctx.restore()}
+// legend
+if(A.deal>.02){ctx.font='13px system-ui';ctx.textAlign='left';ctx.fillStyle=TR;ctx.fillText('● Training '+trN,pl+8,pt+16);ctx.fillStyle=TE;ctx.fillText('● Test '+teN,pl+98,pt+16)}
+// readout
+const r=$('read');
+if(step>=3)r.innerHTML=`<span class="tr">Training MSE ${mTr[D].toFixed(2)}</span> &nbsp;·&nbsp; <span class="te">Test MSE ${mTe[D].toFixed(2)}</span>`;
+else if(step==2)r.innerHTML=`<span class="tr">Training MSE ${mTr[D].toFixed(2)}</span> &nbsp;·&nbsp; <span class="te">Test MSE: locked 🔒</span>`;
+else r.textContent='';}
+function drawChart(){if(c2.hidden)return;size(c2,x2);const W=c2.clientWidth,H=c2.clientHeight,pl=34,pr=12,pt=26,pb=36,ctx=x2;
+const TR=col('--tr'),TE=col('--te'),L=col('--line'),M=col('--mut'),F=col('--fg');
+const top=Math.max(3,Math.min(DS[ds].cap,Math.max(...mTe.slice(1),...mTr.slice(1))*1.05));
+const X=d=>pl+(d-1)/(DM-1)*(W-pl-pr),Y=v=>H-pb-Math.min(v,top)/top*(H-pt-pb);
+ctx.clearRect(0,0,W,H);ctx.font='12px system-ui';ctx.fillStyle=M;ctx.strokeStyle=L;ctx.lineWidth=1;
+for(let v=0;v<=top;v+=top>20?10:top>5?2:1){ctx.beginPath();ctx.moveTo(pl,Y(v));ctx.lineTo(W-pr,Y(v));ctx.stroke();ctx.fillText(v,pl-16,Y(v)+4)}
+[1,4,8,12].forEach(d=>ctx.fillText(d,X(d)-3,H-20));ctx.fillText('flexibility (degree) →',pl+20,H-4);
+ctx.fillStyle=F;ctx.fillText('Error (MSE)',pl-28,pt-10);
+ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(pl,Y(SD*SD));ctx.lineTo(W-pr,Y(SD*SD));ctx.strokeStyle=M;ctx.stroke();ctx.setLineDash([]);
+ctx.fillStyle=M;ctx.fillText('noise floor',W-pr-62,Y(1)-5);
+const ln=(a,cl2)=>{ctx.beginPath();for(let d=1;d<=DM;d++)d>1?ctx.lineTo(X(d),Y(a[d])):ctx.moveTo(X(d),Y(a[d]));ctx.strokeStyle=cl2;ctx.lineWidth=2.5;ctx.stroke();for(let d=1;d<=DM;d++){ctx.beginPath();ctx.arc(X(d),Y(a[d]),d==D?6:2.5,0,7);ctx.fillStyle=cl2;ctx.fill();if(a[d]>top){ctx.font='11px system-ui';ctx.fillText('▲',X(d)-4,Y(top)+12);ctx.font='12px system-ui'}}};
+ctx.beginPath();ctx.moveTo(X(D),pt);ctx.lineTo(X(D),H-pb);ctx.strokeStyle=M;ctx.lineWidth=1;ctx.globalAlpha=.5;ctx.stroke();ctx.globalAlpha=1;
+ln(mTr,TR);ln(mTe,TE);ctx.font='13px system-ui';ctx.fillStyle=TR;ctx.fillText('Training error',pl+8,pt+2);ctx.fillStyle=TE;ctx.fillText('Test error',pl+112,pt+2)}
+function tick(t){const dt=Math.min(.05,(t-last)/1000||0);last=t;
+A.deal=toward(A.deal,step>=1?1:0,dt*(step>=1?.55:2));A.dim=toward(A.dim,step==2?1:0,dt*4);
+A.fit=toward(A.fit,step>=2?1:0,dt*(step>=2?1.1:3));A.res=toward(A.res,step>=3?1:0,dt*(step>=3?1.2:4));
+drawMain();drawChart();requestAnimationFrame(tick)}
+setStep(0);requestAnimationFrame(tick);
+</script></main></body></html>
