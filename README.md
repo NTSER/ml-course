@@ -1,4 +1,4 @@
-# Statistical learning in motion
+# Supervised learning in motion
 
 Three interactive HTML lessons for students.
 
