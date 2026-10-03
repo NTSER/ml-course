@@ -33,7 +33,7 @@ h1{margin-bottom:12px}
 <h1>Statistical learning in motion</h1>
 <div class="views" id="views"><button data-v="v2" aria-pressed="true">One input (2D)</button><button data-v="v3" aria-pressed="false">Two inputs (3D)</button></div>
 <section id="v2">
-<p class="sub">Tab 1 uses the whole population, far more data than we could ever collect. Tabs 2 and 3 use the same 50 training points.</p>
+<p class="sub">Start with the conditional mean in tab 1, then compare two ways to estimate it. Tabs 2 and 3 use the same 50 training observations. The population is simulated, so we know the truth.</p>
 <div class="tabs" id="a-tabs">
 <button data-m="0" style="--c:var(--truth)">1. The ideal answer</button>
 <button data-m="1" style="--c:var(--knn)">2. KNN: average the neighbours</button>
@@ -50,7 +50,7 @@ h1{margin-bottom:12px}
 <p id="a-cap"></p>
 </section>
 <section id="v3" hidden>
-<p class="sub">X1 and X2 are on the floor, Y goes up. Tab 1 uses the whole population; tabs 2 and 3 use the same 50 training points. Drag the plot to rotate it.</p>
+<p class="sub">X1 and X2 are on the floor; Y is height. Tab 1 shows the true conditional mean. Tabs 2 and 3 use the same 50 training observations. Drag to rotate.</p>
 <div class="tabs" id="b-tabs">
 <button data-m="0" style="--c:var(--truth)">1. The ideal answer</button>
 <button data-m="1" style="--c:var(--knn)">2. KNN: average the neighbours</button>
@@ -88,9 +88,9 @@ function stack(k){let q=(Math.imul(k+7,2654435761)>>>0)%2147483646+1;const r=()=
 const cv=$('cv'),ctx=cv.getContext('2d');
 let mode=0,x0=0,K=5,playing=!matchMedia('(prefers-reduced-motion:reduce)').matches,last=0;
 const cap=[
-"Imagine a huge population where many observations share exactly the same x. Only the points on the dashed vertical line count, no neighbours. Their Y values differ, so no method can hit them all; the best guess is their average, E(Y | X = x). Slide across and that average traces the pink curve: the regression function. The scatter around it is irreducible error. The faint grey dots are one sample from that population. In real data we rarely have several points at exactly one x, which is why KNN (next tab) has to borrow neighbours.",
-"At every x, KNN does two things. 1) It picks the K training points closest to x, looking only at the X axis (the green bar on the axis; Y plays no role in the choice). 2) It averages the Y values of those K points (dashed line from the y-axis). That average is the prediction, the green dot. Sweeping x builds the green curve. K controls flexibility: small K is very flexible (follows every wiggle: low bias, high variance); large K is rigid and smooth but can miss real shape.",
-"Fit a polynomial of the chosen degree to the training points by minimising the squared vertical gaps. Degree 1 is a straight line: low flexibility, simple and interpretable, but it cannot follow the bends of the truth (dashed pink). Raise the degree and the curve becomes more flexible and training error falls, until it starts chasing noise (overfitting)."];
+"The target is the familiar conditional mean, f(x) = E(Y | X = x). It minimises expected squared prediction error. The vertical stack illustrates possible Y values at a fixed x; their mean traces the pink curve. Variation around that mean is irreducible noise.",
+"K-nearest neighbours (KNN) estimates E(Y | X = x) by averaging the Y values of the K training points closest in X. Y does not determine who is a neighbour. Try changing K: smaller K gives a more flexible fit; larger K averages over a wider neighbourhood.",
+"This is least-squares regression using powers of X. It is linear in the coefficients even when the fitted curve bends. Degree 1 gives a straight line. Increase the degree: training fit improves, but the model may start fitting noise."];
 const lab=["x","x","fit"];
 function setMode(m){mode=m;x0=0;playing=true;$('play').textContent='Pause';
 document.querySelectorAll('#'+PFX+'tabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m==m));
@@ -178,9 +178,9 @@ function stack(k){let q=(Math.imul(k+7,2654435761)>>>0)%2147483646+1;const r=()=
 const cv=$('cv'),ctx=cv.getContext('2d');
 let mode=0,t=0,K=10,playing=!matchMedia('(prefers-reduced-motion:reduce)').matches,last=0,az=-.65,el=.38,W=1,H=1,sc=1;
 const cap=[
-"Now Y depends on two inputs, so 'exactly this x' becomes an exact spot (x1, x2) on the floor, and that spot can be anywhere, not only where we have data. Picture many possible observations stacked on the dashed vertical line, with no neighbours. Their average is the pink dot, and as the spot scans the floor these averages build the regression surface E(Y | X1, X2). The faint grey dots are one sample of the data we would actually see.",
-"At every spot (x1, x2), KNN does two things. 1) It picks the K training points closest to the spot, looking only at the floor (the circle; heights play no role in the choice). 2) It averages the heights (Y values) of those K points, read across onto the central line. That average is the prediction, the green dot. Scanning builds the KNN surface. K controls flexibility: small K gives a very flexible, bumpy surface; large K a rigid, smooth one.",
-"Fit a polynomial surface of the chosen degree by minimising the squared vertical gaps. Degree 1 is a flat plane, y = θ0 + θ1·x1 + θ2·x2: low flexibility, simple, and it captures only the overall tilt. Raise the degree and the surface can bend, training error falls, and eventually it chases noise (overfitting). The true surface is the faint pink sheet."];
+"With two inputs, the target is E(Y | X1, X2), a surface. The vertical stack illustrates possible Y values at a fixed pair (x1, x2). Their mean is the pink dot. The grey points are a training sample.",
+"KNN averages the Y values of the K training points closest in the (X1, X2) plane. Heights do not determine who is a neighbour. Smaller K gives a more flexible surface. In applications, scale inputs appropriately before measuring distances.",
+"This is least-squares regression using powers and interactions of X1 and X2. It remains linear in the coefficients. Degree 1 gives a plane; higher degrees let it bend. Better training fit need not mean better predictions on new data."];
 const lab=["scan","scan","fit"];
 function setMode(m){mode=m;t=0;playing=true;$('play').textContent='Pause';
 document.querySelectorAll('#'+PFX+'tabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m==m));

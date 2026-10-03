@@ -25,7 +25,7 @@ input[type=range]{width:150px}
 .b{color:var(--bias)}.v{color:var(--est)}
 </style></head><body><main>
 <h1>Bias and variance when estimating f</h1>
-<p class="sub">Imagine we could collect many different training sets from the same world, each with 30 noisy points spread along x. Fit the same model to each one. Two things matter: how far the <b class="b">average</b> fitted curve is from the truth (<b class="b">bias</b>), and how much the fitted curve <b class="v">changes</b> from one training set to the next (<b class="v">variance</b>).</p>
+<p class="sub">Think of repeated sampling from the same data-generating process. Each sample has 30 observations. At a fixed x, <b class="b">bias</b> is the average prediction minus the true conditional mean, f(x) = E(Y | X = x). <b class="v">Variance</b> measures how much predictions vary across samples. Change the degree, then try a different x.</p>
 <div class="stage"><canvas id="c1" aria-label="Many fitted curves compared with the true function"></canvas><canvas id="c2" aria-label="Error breakdown"></canvas></div>
 <div class="ctl">
 <button id="play">Pause</button><button id="replay">Replay</button>
@@ -117,7 +117,7 @@ const ln=(k,c,w)=>{ctx.beginPath();for(let d=1;d<=DM;d++)d>1?ctx.lineTo(X(d),Y(s
 ln('b',BI,2.5);ln('v',EST,2.5);ln('t',F,3);
 ctx.font='12px system-ui';[['bias²',BI],['variance',EST],['total test error',F]].forEach(([t,c],i)=>{ctx.fillStyle=c;ctx.fillText('● '+t,pl+6+[0,62,132][i],pt+4)});
 ctx.fillStyle=M;ctx.fillText('noise floor',W-pr_-66,Y(1)-5)}
-const caps=d=>d<best-1?`Degree ${d} is too rigid: all the fits look alike (low variance) but they miss the truth in the same direction (high bias). More data would not fix that.`:d>best+1?`Degree ${d} is too flexible: the average of the fits is close to the truth (low bias) but each training set gives a very different curve (high variance).`:`Degree ${d} is near the sweet spot: the fits are centred close to the truth and not too scattered. Total error is lowest here.`;
+const caps=d=>d<best-1?`Degree ${d}: a rigid model can have low variance but high bias. More observations alone cannot remove bias from the wrong functional form.`:d>best+1?`Degree ${d}: a flexible model can reduce bias but vary more across samples. Check the error breakdown at the selected x.`:`Degree ${d} is near the best balance in this simulation. Expected squared prediction error = bias² + variance + irreducible noise.`;
 function tick(t){const dt=Math.min(.05,(t-last)/1000||0);last=t;
 if(playing){tl+=dt;if(tl>=TEND){tl=TEND;playing=false;$('play').textContent='Play'}}
 const r=drawMain(state());drawRight(r);$('cap').textContent=caps(deg);requestAnimationFrame(tick)}
