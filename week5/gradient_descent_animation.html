@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gradient descent</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f5f6f8;--fg:#1b2130;--mut:#5b6474;--card:#fff;--line:#d8dce4;--ga:#2b59d9;--gc:#d6336c;--gb:#d98a00;--gd:#0b8f6a;--code:#eceff4;--sl:#d3e0ff;--sh:#3d63d6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#11141b;--fg:#e8ebf2;--mut:#98a1b3;--card:#181c25;--line:#2b3140;--ga:#7c9cff;--gc:#ff6b9a;--gb:#ffb84d;--gd:#3ddc9f;--code:#222838;--sl:#1a2547;--sh:#7b97ff}}
+:root[data-theme="dark"]{--bg:#11141b;--fg:#e8ebf2;--mut:#98a1b3;--card:#181c25;--line:#2b3140;--ga:#7c9cff;--gc:#ff6b9a;--gb:#ffb84d;--gd:#3ddc9f;--code:#222838;--sl:#1a2547;--sh:#7b97ff}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:900px;margin:0 auto;padding:20px 16px 32px}
+h1{font:600 26px/1.2 Georgia,"Iowan Old Style",serif;margin:0 0 10px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:8px 14px;border-radius:8px}
+button:disabled{opacity:.45;cursor:default}
+button.pri{background:var(--fg);color:var(--bg);border-color:var(--fg);font-weight:600}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ga);outline-offset:2px}
+.modes{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
+.modes button{border:0;border-radius:0}
+.modes button[aria-pressed="true"]{background:var(--fg);color:var(--bg);font-weight:600}
+.top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.steps{display:flex;gap:6px;margin:0 0 10px}
+.steps i{flex:1;height:6px;border-radius:3px;background:var(--line)}
+.steps i.on{background:var(--fg)}
+.stage{display:flex;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px}
+canvas{display:block;height:min(80vw,360px);min-height:300px;touch-action:pan-y}
+#c1{flex:2 1 260px;min-width:0;width:100%}#c2{flex:3 1 320px;min-width:0;width:100%}
+.ctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.ctl label{display:flex;gap:8px;align-items:center;color:var(--mut)}
+.ctl label b{color:var(--fg);min-width:5.2em;display:inline-block}
+input[type=range]{width:170px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 16px;min-height:150px}
+h2{font:600 18px/1.3 system-ui,sans-serif;margin:0}
+#cap{color:var(--mut);margin:2px 0 8px}
+.eq{font:19px/1.7 "STIX Two Text","Cambria Math",Cambria,Georgia,serif;overflow-x:auto;white-space:nowrap}
+.eq .ar{font:normal 17px system-ui,sans-serif}
+.eq .v{color:var(--ga);font-weight:600}
+.eq .m{color:var(--mut);font:15px/1.6 system-ui,sans-serif}
+.eq .bad{color:var(--gc);font:600 15px/1.6 system-ui,sans-serif}
+.eq .ok{color:var(--gd);font:600 15px/1.6 system-ui,sans-serif}
+@media (max-width:600px){.eq{white-space:normal;font-size:17px}}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 .2em;font-size:.92em;line-height:1.2}
+.fr>span:first-child{border-bottom:1px solid currentColor;padding:0 .25em .04em}
+.fr>span:last-child{padding:.04em .25em 0}
+table{border-collapse:collapse;font-size:14px;margin-top:8px;width:100%}
+th,td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:left}
+th{color:var(--mut);font-weight:500}
+.fl{font:19px/1.7 "STIX Two Text","Cambria Math",Cambria,Georgia,serif;white-space:nowrap}
+.tg{font:600 14px system-ui,sans-serif;display:inline-block;min-width:6.8em}
+@media (max-width:600px){.modes{flex-wrap:wrap}.modes button{padding:8px 10px}.fl{white-space:normal}input[type=range]{width:110px}.ctl label b{min-width:0}}
+
+.chips{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center;color:var(--mut)}
+.chips button{padding:6px 12px}
+@media (max-width:600px){.chips button{padding:6px 10px}}
+</style></head><body><main>
+<h1>Gradient descent</h1>
+<div class="top"><span class="modes" id="tabs"><button data-t="0" aria-pressed="true">1 parameter (2D)</button><button data-t="1" aria-pressed="false">2 parameters (3D)</button></span>
+<span class="modes" id="kinds"><button data-k="0" aria-pressed="true">Convex</button><button data-k="1" aria-pressed="false">Non-convex</button></span>
+<span class="modes" id="views" hidden><button data-v="0" aria-pressed="true">3D surface</button><button data-v="1" aria-pressed="false">Top view</button></span></div>
+<div class="stage"><canvas id="c1" aria-label="Data and the current model"></canvas><canvas id="c2" aria-label="Cost and the descent paths"></canvas></div>
+<div class="ctl">
+<button id="run" class="pri">Run</button><button id="one">One step</button><button id="rs">Reset</button>
+<label>Learning rate <b id="ev">η = 0.10</b><input type="range" id="eta" min="0.01" max="0.3" step="0.01" value="0.05"></label>
+</div>
+<div class="card"><h2 id="ttl"></h2><div id="cap"></div><div class="eq" id="eq"></div></div>
+<script>
+const $=id=>document.getElementById(id);
+let seed=7;const rnd=()=>(seed=seed*16807%2147483647)/2147483647;
+const gauss=()=>Math.sqrt(-2*Math.log(rnd()+1e-9))*Math.cos(6.2832*rnd());
+const col=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
+const F=(v,d=2)=>(Math.abs(v)<.5*10**-d?0:v).toFixed(d).replace('-','−');
+const FG_=v=>F(v,Math.abs(v)<.1?3:2);
+const c1=$('c1'),c2=$('c2'),x1=c1.getContext('2d'),x2=c2.getContext('2d');
+function size(c,x){const d=devicePixelRatio||1,w=Math.round(c.clientWidth*d),h=Math.round(c.clientHeight*d);if(c.width!==w||c.height!==h){c.width=w;c.height=h;x.setTransform(d,0,0,d,0,0)}}
+function dot(ctx,x,y,r,fill,stroke){ctx.beginPath();ctx.arc(x,y,r,0,6.2832);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke()}}
+const hex=h=>{h=h.replace('#','');return[0,2,4].map(i=>parseInt(h.substr(i,2),16))};
+const ramp=(a,b,t)=>`rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*t)).join()})`;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const SUB=n=>String(n).replace(/[0-9]/g,d=>'₀₁₂₃₄₅₆₇₈₉'[d]);
+
+// ---------- models
+const models=[];
+// linear data (same as before)
+seed=7;const LN_=10;
+const LX1=Array.from({length:LN_},(_,i)=>.3+i*2/(LN_-1)+(rnd()-.5)*.15),LY1=LX1.map(x=>1.5*x+.35*gauss());
+const LX2=Array.from({length:LN_},(_,i)=>-.8+i*2.6/(LN_-1)+(rnd()-.5)*.15),LY2=LX2.map(x=>.8+1.5*x+.35*gauss());
+const dr=(X,Y)=>({xr:[Math.min(0,...X)-.15,Math.max(...X)+.15],yr:[Math.min(0,...Y)-.4,Math.max(...Y)+.6]});
+(function(){const X=LX1,Y=LY1,mxx=mean(X.map(x=>x*x));
+const J=([t])=>mean(X.map((x,i)=>(t*x-Y[i])**2)),g=([t])=>[mean(X.map((x,i)=>2*(t*x-Y[i])*x))];
+const ec=1/mxx,opt=[mean(X.map((x,i)=>x*Y[i]))/mxx];
+models.push({id:'L1',dim:1,X,Y,J,g,rng:[[-1,4]],Jtop:Math.max(J([-1]),J([4]))*1.05,pg:opt,Jg:J(opt),tol:2e-3,eta:Math.round(.25*ec*100)/100,etaMax:Math.round(1.15*ec*100)/100,
+ starts:[[-.6]],...dr(X,Y),f:([t],x)=>t*x,ttl:'Convex: ŷ = θ₁x',cap:'Convex: MSE is a bowl with one minimum. The gradient points uphill, so we step the opposite way. Click the curve to choose a start.',names:['θ₁']})})();
+(function(){ // A: sin(theta x)
+seed=7;const X=[],Y=[],m=40;for(let i=0;i<m;i++){const x=4*(i+.5)/m;X.push(x);Y.push(Math.sin(2.2*x)+.15*gauss())}
+const J=([t])=>X.reduce((s,x,i)=>s+(Math.sin(t*x)-Y[i])**2,0)/m,
+ g=([t])=>[X.reduce((s,x,i)=>s+2*(Math.sin(t*x)-Y[i])*Math.cos(t*x)*x,0)/m];
+let best=[9,0];for(let t=-1;t<=8;t+=.002){const j=J([t]);if(j<best[0])best=[j,t]}
+let Jt=0;for(let t=-1;t<=8;t+=.02)Jt=Math.max(Jt,J([t]));
+models.push({dim:1,X,Y,J,g,rng:[[-1,8]],Jtop:Jt*1.08,pg:[best[1]],Jg:best[0],tol:2e-3,eta:.05,etaMax:.3,
+ starts:[[1.6],[3.6],[5.3],[7]],xr:[0,4],yr:[-1.6,1.6],f:([t],x)=>Math.sin(t*x),
+ id:'S',ttl:'Non-convex: ŷ = sin(θx)',cap:'Non-convex: MSE has many dips. Where you start decides where you end. Click the curve to choose a start.',names:['θ']})})();
+(function(){const X=LX2,Y=LY2,mx=mean(X),mxx=mean(X.map(x=>x*x)),my=mean(Y),mxy=mean(X.map((x,i)=>x*Y[i]));
+const J=([a,b])=>mean(X.map((x,i)=>(a+b*x-Y[i])**2)),g=([a,b])=>{const r=X.map((x,i)=>a+b*x-Y[i]);return[2*mean(r),2*mean(r.map((e,i)=>e*X[i]))]};
+const t=1+mxx,d=mxx-mx*mx,ec=2/(2*(t/2+Math.sqrt(t*t/4-d))),w=(mxy-mx*my)/(mxx-mx*mx),opt=[my-w*mx,w];
+models.push({id:'L2',dim:2,X,Y,J,g,rng:[[-1.2,2.8],[-.5,3.5]],pg:opt,Jg:J(opt),tol:2e-3,eta:Math.round(.25*ec*100)/100,etaMax:Math.round(1.15*ec*100)/100,
+ starts:[[-.8,3.2]],...dr(X,Y),f:([a,b],x)=>a+b*x,ttl:'Convex: ŷ = θ₀ + θ₁x',cap:'Convex: MSE is a bowl with one minimum, so from any start we reach it. Click the graph to choose a start.',names:['θ₀','θ₁']})})();
+(function(){ // C: tanh(theta0 + theta1 x)
+seed=5;const X=[],Y=[],m=30;for(let i=0;i<m;i++){const x=-3+6*(i+.5)/m;X.push(x);Y.push(Math.tanh(1.5*(x-.5))+.15*gauss())}
+const J=([b,w])=>X.reduce((s,x,i)=>s+(Math.tanh(b+w*x)-Y[i])**2,0)/m,
+ g=([b,w])=>{let g0=0,g1=0;X.forEach((x,i)=>{const y=Math.tanh(b+w*x),r=y-Y[i],d=1-y*y;g0+=2*r*d;g1+=2*r*d*x});return[g0/m,g1/m]};
+let bc=[9,0,0];for(let b=-6;b<=6;b+=.05)for(let w=-6;w<=6;w+=.05){const j=J([b,w]);if(j<bc[0])bc=[j,b,w]}
+let p=[bc[1],bc[2]];for(let k=0;k<3000;k++){const q=g(p);p=[p[0]-.3*q[0],p[1]-.3*q[1]]}
+models.push({dim:2,X,Y,J,g,rng:[[-6,6],[-6,6]],Jmax:2.6,pg:p,Jg:J(p),tol:5e-4,eta:.5,etaMax:2,
+ starts:[[0,0],[0,-5],[5,-5],[6,6]],xr:[-3,3],yr:[-1.5,1.5],f:([b,w],x)=>Math.tanh(b+w*x),
+ id:'T',ttl:'Non-convex: ŷ = tanh(θ₀ + θ₁x)',cap:'Non-convex: a single tanh neuron. Where it is saturated and wrong, MSE is flat, the gradient is ≈ 0 and we get stuck. Click the graph to choose a start.',names:['θ₀','θ₁']})})();
+for(const m of models){m.ghosts=[];m.start=m.starts[0].slice();m.path=[m.start.slice()];m.done=false;m.res=null;m.shown=0;
+ if(m.dim==2){const G=34,GT=72,[A,B]=m.rng;m.G=G;m.GT=GT;m.Z=Array.from({length:G+1},(_,i)=>Array.from({length:G+1},(_,j)=>m.J([A[0]+(A[1]-A[0])*i/G,B[0]+(B[1]-B[0])*j/G])));
+ if(!m.Jmax){let mx=0;m.Z.forEach(r=>r.forEach(v=>mx=Math.max(mx,v)));m.Jmax=mx}
+ m.ZT=Array.from({length:GT},(_,i)=>Array.from({length:GT},(_,j)=>m.J([A[0]+(A[1]-A[0])*(i+.5)/GT,B[0]+(B[1]-B[0])*(j+.5)/GT])))}}
+const st={tab:0,kind:0,view:0,yaw:-.3,pitch:.5,playing:false};
+const cur=()=>models[st.tab*2+st.kind],last=m=>m.path[m.path.length-1];
+const ppos=m=>{const i=Math.min(m.path.length-1,Math.floor(m.shown)),f=m.shown-i,a=m.path[i],b=m.path[Math.min(i+1,m.path.length-1)];return a.map((v,k)=>v+(b[k]-v)*f)};
+const ci=m=>Math.min(m.path.length-1,Math.round(m.shown));
+const vis=m=>m.path.slice(0,Math.floor(m.shown)+1).concat([ppos(m)]);
+const atEnd=m=>m.shown>=m.path.length-1;
+
+// ---------- stepping and verdict
+function hess(m,p){const h=1e-3,J=m.J;if(m.dim==1)return[(J([p[0]+h])-2*J(p)+J([p[0]-h]))/(h*h)];
+const a=(J([p[0]+h,p[1]])-2*J(p)+J([p[0]-h,p[1]]))/(h*h),d=(J([p[0],p[1]+h])-2*J(p)+J([p[0],p[1]-h]))/(h*h),
+b=(J([p[0]+h,p[1]+h])-J([p[0]+h,p[1]-h])-J([p[0]-h,p[1]+h])+J([p[0]-h,p[1]-h]))/(4*h*h),q=Math.sqrt(((a-d)/2)**2+b*b);return[(a+d)/2-q,(a+d)/2+q]}
+function verdict(m){const p=last(m),J=m.J(p);if(!isFinite(J)||J>60*(m.J(m.path[0])+1))return{k:'bad',t:'MSE is exploding: η is too large'};
+const gn=Math.hypot(...m.g(p));if(gn>=m.tol)return{k:'bad',t:'stopped after 5000 steps (still moving very slowly)'};
+if(J-m.Jg<.01)return{k:'ok',t:m.id[0]=='L'?'gradient ≈ 0: we reached the minimum':'Reached the global minimum: the best possible fit'};
+const lam=hess(m,p)[0];
+if(lam<-1e-3)return{k:'bad',t:'Saddle point: gradient = 0 but it is not a minimum. Stuck.'};
+if(lam>.05)return{k:'bad',t:`Local minimum: gradient = 0, but MSE ${F(J)} is worse than the best ${F(m.Jg)}`};
+return{k:'bad',t:`Flat plateau: gradient ≈ 0 but MSE ${F(J)} is far above the best ${F(m.Jg)}`}}
+function stepOnce(m){if(m.done)return false;const p=last(m),g=m.g(p),gn=Math.hypot(...g);
+if(gn<m.tol||m.path.length>5000){finish(m);return false}
+const q=p.map((v,k)=>v-m.eta*g[k]);m.path.push(q);const J=m.J(q);
+if(!isFinite(J)||J>60*(m.J(m.path[0])+1)){finish(m);return false}
+if(Math.hypot(...m.g(q))<m.tol){finish(m);return false}return true}
+function finish(m){m.done=true;m.res=verdict(m)}
+function begin(m,p,keep=true){if(keep&&m.path.length>1)m.ghosts.push({path:m.path,res:m.res});if(m.ghosts.length>6)m.ghosts.shift();
+m.start=p.slice();m.path=[p.slice()];m.done=false;m.res=null;m.shown=0;st.playing=false}
+function clearAll(m){m.ghosts=[];m.path=[m.start.slice()];m.done=false;m.res=null;m.shown=0;st.playing=false}
+
+// ---------- left panel
+function drawData(m){size(c1,x1);const ctx=x1,W=c1.clientWidth,H=c1.clientHeight;if(W<150||H<120)return;ctx.clearRect(0,0,W,H);
+const FG=col('--fg'),MU=col('--mut'),LN=col('--line'),BL=col('--ga'),PK=col('--gc');
+const ml=30,mr=10,mt=26,mb=26,[xa,xb]=m.xr,[ya,yb]=m.yr,X=v=>ml+(v-xa)/(xb-xa)*(W-ml-mr),Y=v=>H-mb-(v-ya)/(yb-ya)*(H-mt-mb);
+ctx.fillStyle=FG;ctx.font='600 13px system-ui';ctx.fillText('Data and current model',10,16);
+const p=ppos(m);ctx.fillStyle=BL;ctx.textAlign='right';ctx.fillText(m.names.map((n,k)=>`${n} = ${F(p[k])}`).join('   '),W-mr,16);ctx.textAlign='left';
+ctx.strokeStyle=LN;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ml,mt);ctx.lineTo(ml,H-mb);ctx.lineTo(W-mr,H-mb);ctx.stroke();
+ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(ml,Y(0));ctx.lineTo(W-mr,Y(0));ctx.stroke();ctx.setLineDash([]);
+ctx.fillStyle=MU;ctx.font='12px system-ui';ctx.fillText('y',12,mt+4);ctx.textAlign='center';ctx.fillText('x',(ml+W-mr)/2,H-6);ctx.textAlign='left';
+ctx.save();ctx.beginPath();ctx.rect(ml,mt-2,W-ml-mr,H-mt-mb+4);ctx.clip();
+ctx.strokeStyle=PK;ctx.globalAlpha=.35;ctx.lineWidth=1.2;m.X.forEach((x,i)=>{ctx.beginPath();ctx.moveTo(X(x),Y(m.Y[i]));ctx.lineTo(X(x),Y(m.f(p,x)));ctx.stroke()});ctx.globalAlpha=1;
+ctx.strokeStyle=BL;ctx.lineWidth=2.5;ctx.beginPath();for(let k=0;k<=200;k++){const x=xa+(xb-xa)*k/200,y=m.f(p,x);k?ctx.lineTo(X(x),Y(y)):ctx.moveTo(X(x),Y(y))}ctx.stroke();
+m.X.forEach((x,i)=>dot(ctx,X(x),Y(m.Y[i]),3.5,FG));ctx.restore()}
+
+// ---------- right panel, 1 parameter: cost curve
+function pts1(m,W,H){const[a,b]=m.rng[0],ml=40,mr=14,mt=26,mb=32,PW=W-ml-mr,PH=H-mt-mb;return{a,b,ml,mr,mt,mb,PW,PH,px:t=>ml+(t-a)/(b-a)*PW,py:J=>mt+PH-clamp(J/m.Jtop,0,1.02)*PH}}
+function trail(ctx,m,path,P,alpha,lw,dots){const stride=Math.ceil(path.length/50);ctx.globalAlpha=alpha;ctx.strokeStyle=col('--gc');ctx.lineWidth=lw;ctx.beginPath();
+path.forEach((q,k)=>{const x=P.px(q[0]),y=P.py(m.J(q));k?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();
+if(dots)path.forEach((q,k)=>{if(k%stride==0)dot(ctx,P.px(q[0]),P.py(m.J(q)),3,col('--gc'))});ctx.globalAlpha=1}
+function drawLoss1(m){size(c2,x2);const ctx=x2,W=c2.clientWidth,H=c2.clientHeight;if(W<150||H<120)return;ctx.clearRect(0,0,W,H);
+const FG=col('--fg'),MU=col('--mut'),LN=col('--line'),PK=col('--gc'),AM=col('--gb'),TL=col('--gd'),CD=col('--card'),P=pts1(m,W,H),{a,b,ml,mr,mt,mb,PW,PH,px,py}=P;
+ctx.fillStyle=FG;ctx.font='600 13px system-ui';ctx.fillText(`Cost MSE(${m.names[0]})`,10,16);ctx.fillStyle=MU;ctx.font='11px system-ui';ctx.textAlign='right';ctx.fillText('click to choose the start',W-mr,16);ctx.textAlign='left';
+ctx.strokeStyle=LN;ctx.beginPath();ctx.moveTo(ml,mt);ctx.lineTo(ml,mt+PH);ctx.lineTo(W-mr,mt+PH);ctx.stroke();
+ctx.fillStyle=MU;ctx.font='12px system-ui';ctx.textAlign='center';for(let v=Math.ceil(a);v<=b;v++)ctx.fillText(v,px(v),mt+PH+16);ctx.fillText(m.names[0],W-mr-4,mt+PH+28);ctx.textAlign='left';
+ctx.save();ctx.beginPath();ctx.rect(ml,mt-4,PW,PH+6);ctx.clip();
+ctx.strokeStyle=FG;ctx.lineWidth=2.5;ctx.beginPath();for(let k=0;k<=300;k++){const t=a+(b-a)*k/300,y=py(m.J([t]));k?ctx.lineTo(px(t),y):ctx.moveTo(px(t),y)}ctx.stroke();
+m.ghosts.forEach(g=>{trail(ctx,m,g.path,P,.35,1.5,false);const q=g.path[g.path.length-1];dot(ctx,px(q[0]),py(m.J(q)),4,PK)});
+trail(ctx,m,vis(m),P,.6,1.5,true);
+const p=ppos(m),J=m.J(p),s=m.g(p)[0],cx=px(p[0]),cy=py(J),k=-s*(PH/m.Jtop)/(PW/(b-a)),n=Math.hypot(1,k),L=38;ctx.strokeStyle=AM;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx-L/n,cy-L*k/n);ctx.lineTo(cx+L/n,cy+L*k/n);ctx.stroke();
+ctx.restore();
+
+dot(ctx,px(clamp(p[0],a,b)),py(J),8,PK,CD);
+ctx.font='600 13px system-ui';ctx.fillStyle=AM;ctx.fillText(`slope = ${FG_(s)}`,ml+10,mt+18)}
+
+// ---------- right panel, 2 parameters: surface / top view
+const uvz=(m,b,w,J)=>{const A=m.rng[0],B=m.rng[1];return[(b-A[0])/(A[1]-A[0])*2-1,(w-B[0])/(B[1]-B[0])*2-1,Math.min(J/m.Jmax,1.05)*1.2]};
+function proj(u,v,z,W,H){const cy=Math.cos(st.yaw),sy=Math.sin(st.yaw),cp=Math.cos(st.pitch),sp=Math.sin(st.pitch);
+const x=u*cy-v*sy,y=u*sy+v*cy,S=Math.min(W,H*1.15)*.30;return{x:W/2+S*x*1.1,y:H*.58-S*(y*sp+z*cp),d:y*cp-z*sp}}
+function overlay(ctx,m,pj,W){const PK=col('--gc'),TL=col('--gd'),CD=col('--card'),MU=col('--mut');
+const draw=(path,al,lw,dots)=>{ctx.globalAlpha=al;ctx.strokeStyle=PK;ctx.lineWidth=lw;ctx.beginPath();path.forEach((q,i)=>{const o=pj(q);i?ctx.lineTo(o.x,o.y):ctx.moveTo(o.x,o.y)});ctx.stroke();
+if(dots){const stv=Math.ceil(path.length/50);path.forEach((q,k)=>{if(k%stv==0){const o=pj(q);dot(ctx,o.x,o.y,3,PK)}})}ctx.globalAlpha=1};
+m.ghosts.forEach(g=>{draw(g.path,.4,1.5,false);const o=pj(g.path[g.path.length-1]);dot(ctx,o.x,o.y,4,PK)});
+draw(vis(m),.8,2,true);
+let o;ctx.textAlign='center';ctx.font='600 12px system-ui';
+ctx.textAlign='left';const pp=ppos(m);o=pj(pp);dot(ctx,o.x,o.y,8,PK,CD);ctx.font='600 13px system-ui';ctx.fillStyle=PK;const r=o.x>W*.6;ctx.textAlign=r?'right':'left';ctx.fillText(`MSE = ${F(m.J(pp))}`,o.x+(r?-14:14),o.y-12);ctx.textAlign='left'}
+function drawSurf(m){size(c2,x2);const ctx=x2,W=c2.clientWidth,H=c2.clientHeight;if(W<150||H<120)return;ctx.clearRect(0,0,W,H);
+const FG=col('--fg'),MU=col('--mut'),LN=col('--line'),lo=hex(col('--sl')),hi=hex(col('--sh'));
+ctx.fillStyle=FG;ctx.font='600 13px system-ui';ctx.fillText(`Cost surface MSE(${m.names.join(', ')})`,10,16);
+ctx.fillStyle=MU;ctx.font='11px system-ui';ctx.textAlign='right';ctx.fillText(W<440?'click · drag':'click to start · drag to rotate',W-10,16);ctx.textAlign='left';
+const G=m.G,A=m.rng[0],B=m.rng[1],P=(i,j)=>{const[u,v,z]=uvz(m,A[0]+(A[1]-A[0])*i/G,B[0]+(B[1]-B[0])*j/G,m.Z[i][j]);return proj(u,v,z,W,H)};
+const quads=[];for(let i=0;i<G;i++)for(let j=0;j<G;j++){const a=P(i,j),b=P(i+1,j),c=P(i+1,j+1),d=P(i,j+1);quads.push({q:[a,b,c,d],d:(a.d+b.d+c.d+d.d)/4,t:Math.min(1,(m.Z[i][j]+m.Z[i+1][j+1])/2/m.Jmax*1.4)})}
+quads.sort((p,q)=>q.d-p.d);ctx.lineWidth=.6;ctx.strokeStyle=LN;
+quads.forEach(o=>{ctx.fillStyle=ramp(hi,lo,Math.sqrt(o.t));ctx.beginPath();o.q.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.fill();ctx.stroke()});
+const F0=[[-1,-1],[1,-1],[1,1],[-1,1]].map(([u,v])=>proj(u,v,0,W,H));ctx.setLineDash([4,3]);ctx.strokeStyle=MU;ctx.beginPath();F0.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.stroke();ctx.setLineDash([]);
+ctx.fillStyle=MU;ctx.font='600 13px system-ui';const lb=(u,v,z,t)=>{const p=proj(u,v,z,W,H);ctx.fillText(t,p.x-4,p.y+4)};lb(0,-1.18,0,m.names[0]);lb(1.18,0,0,m.names[1]);lb(-1,-1,1.35,'MSE');
+overlay(ctx,m,p=>{const[u,v,z]=uvz(m,p[0],p[1],m.J(p));return proj(u,v,z+.02,W,H)},W)}
+function drawTop(m){size(c2,x2);const ctx=x2,W=c2.clientWidth,H=c2.clientHeight;if(W<150||H<120)return;ctx.clearRect(0,0,W,H);
+const FG=col('--fg'),MU=col('--mut'),LN=col('--line'),lo=hex(col('--sl')),hi=hex(col('--sh'));
+const A=m.rng[0],B=m.rng[1],ml=44,mr=14,mt=26,mb=32,PW=W-ml-mr,PH=H-mt-mb,px=b=>ml+(b-A[0])/(A[1]-A[0])*PW,py=w=>mt+PH-(w-B[0])/(B[1]-B[0])*PH;
+ctx.fillStyle=FG;ctx.font='600 13px system-ui';ctx.fillText(W<440?`MSE(${m.names.join(', ')}) from above`:`Contours of MSE(${m.names.join(', ')}), from above`,10,16);
+ctx.fillStyle=MU;ctx.font='11px system-ui';ctx.textAlign='right';ctx.fillText(W<440?'click to start':'click to choose the start',W-mr,16);ctx.textAlign='left';
+const G=m.GT,cw=PW/G,ch=PH/G;
+for(let i=0;i<G;i++)for(let j=0;j<G;j++){const t=Math.sqrt(Math.min(1,(m.ZT[i][j]/m.Jmax)*1.4)),bd=Math.floor(t*9)/9;ctx.fillStyle=ramp(lo,hi,1-bd);ctx.fillRect(ml+i*cw,mt+PH-(j+1)*ch,cw+.6,ch+.6)}
+ctx.strokeStyle=LN;ctx.strokeRect(ml,mt,PW,PH);
+ctx.fillStyle=MU;ctx.font='12px system-ui';ctx.textAlign='center';for(let v=Math.ceil(A[0]);v<=A[1];v+=(A[1]-A[0]>8?2:1))ctx.fillText(v,px(v),mt+PH+16);ctx.fillText(m.names[0],W-mr-4,mt+PH+28);
+ctx.textAlign='right';for(let v=Math.ceil(B[0]);v<B[1];v+=(B[1]-B[0]>8?2:1))ctx.fillText(v,ml-6,py(v)+4);ctx.fillText(m.names[1],ml-6,mt+10);ctx.textAlign='left';
+ctx.save();ctx.beginPath();ctx.rect(ml,mt,PW,PH);ctx.clip();overlay(ctx,m,p=>({x:px(p[0]),y:py(p[1])}),W);ctx.restore()}
+
+// ---------- equations
+let lastEq='';
+const FR=(n,d)=>`<span class="fr"><span>${n}</span><span>${d}</span></span>`;
+function eqHTML(m){const i=ci(m),p=m.path[i],J=m.J(p),g=m.g(p),v=t=>`<span class="v">${t}</span>`,e=F(m.eta),q=p.map((x,k)=>x-m.eta*g[k]),
+NX='<sup>(next step)</sup>',xi='x<sub>1</sub><sup>(i)</sup>',xv='x<sup>(i)</sup>',yi='y<sup>(i)</sup>',yh='ŷ<sup>(i)</sup>',S='Σ<sub>i</sub>',t0='θ<sub>0</sub>',t1='θ<sub>1</sub>',gr='∇<sub>θ</sub> MSE(θ)',
+vec='<span class="m"> where x<sup>(i)</sup> = (1, x<sub>1</sub><sup>(i)</sup>)</span>';let L=[];
+if(m.id=='L1')L=[`${yh} = ${t1} ${xi}`,`${FR('dMSE','d'+t1)} = ${FR(2,'m')} ${S} ( ${yh} − ${yi} ) ${xi} = ${v(FG_(g[0]))}`,`${t1}${NX} = ${t1} − η · ${FR('dMSE','d'+t1)} = ${F(p[0])} − ${e} · (${FG_(g[0])}) = ${v(F(q[0]))}`];
+else if(m.id=='S')L=[`${yh} = sin( θ ${xi} )`,`${FR('dMSE','dθ')} = ${FR(2,'m')} ${S} ( ${yh} − ${yi} ) · ${FR('∂'+yh,'∂θ')} = ${v(FG_(g[0]))}`,`<span class="m">${FR('∂'+yh,'∂θ')} = cos( θ ${xi} ) ${xi}</span>`,`θ${NX} = θ − η · ${FR('dMSE','dθ')} = ${F(p[0])} − ${e} · (${FG_(g[0])}) = ${v(F(q[0]))}`];
+else if(m.id=='L2')L=[`${yh} = θ<sup>T</sup>${xv} = ${t0} + ${t1} ${xi}${vec}`,`${gr} = ${FR(2,'m')} X<sup>T</sup> ( Xθ − y ) = (${v(FG_(g[0]))}, ${v(FG_(g[1]))})`,`θ${NX} = θ − η ${gr}`,`(${t0}, ${t1}) = (${F(p[0])}, ${F(p[1])}) − ${e} · (${FG_(g[0])}, ${FG_(g[1])}) = (${v(F(q[0]))}, ${v(F(q[1]))})`];
+else L=[`${yh} = tanh( θ<sup>T</sup>${xv} ) = tanh( ${t0} + ${t1} ${xi} )${vec}`,`${gr} = ${FR(2,'m')} ${S} ( ${yh} − ${yi} ) · ${FR('∂'+yh,'∂θ')} = (${v(FG_(g[0]))}, ${v(FG_(g[1]))})`,`<span class="m">${FR('∂'+yh,'∂θ')} = ( 1 − ${yh}² ) ${xv}</span>`,`θ${NX} = θ − η ${gr}`,`(${t0}, ${t1}) = (${F(p[0])}, ${F(p[1])}) − ${e} · (${FG_(g[0])}, ${FG_(g[1])}) = (${v(F(q[0]))}, ${v(F(q[1]))})`];
+let tail=`<span class="m">step t = ${i} · MSE = ${F(J)}</span>`;
+if(m.res&&atEnd(m))tail+=`   <span class="${m.res.k}">${m.res.t}</span>`;
+else if(m.id=='L1')tail+=`<span class="m"> · ${g[0]>0?'positive slope: go left':'negative slope: go right'}</span>`;
+L.push(tail);return L}
+function ui(){const m=cur();$('ttl').textContent=m.ttl;$('cap').textContent=m.cap;
+const html=eqHTML(m).map(l=>`<div>${l}</div>`).join('');if(html!==lastEq){$('eq').innerHTML=html;lastEq=html}
+$('run').textContent=st.playing?'Pause':'Run';$('run').disabled=m.done&&atEnd(m)&&!st.playing;$('one').disabled=m.done||st.playing;$('ev').textContent='η = '+F(m.eta)}
+function tick(ts){const dt=Math.min(.05,(ts-(tick.l||ts))/1000);tick.l=ts;const m=cur(),rate=Math.min(3*(1+m.path.length/4),900);
+if(st.playing){const adv=m.shown+dt*rate;while(adv>m.path.length-1&&!m.done){if(!stepOnce(m))break}m.shown=Math.min(adv,m.path.length-1);if(m.done&&atEnd(m))st.playing=false}
+else if(m.shown<m.path.length-1)m.shown=Math.min(m.path.length-1,m.shown+dt*4);
+drawData(m);if(m.dim==1)drawLoss1(m);else if(st.view==0)drawSurf(m);else drawTop(m);ui();requestAnimationFrame(tick)}
+// ---------- events
+function setTab(t,k=st.kind){st.tab=t;st.kind=k;st.playing=false;document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t==t));document.querySelectorAll('#kinds button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.k==k));
+const m=cur();$('views').hidden=m.dim!=2;lastEq='';$('eta').max=m.etaMax;$('eta').value=m.eta}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>setTab(+b.dataset.t));
+document.querySelectorAll('#kinds button').forEach(b=>b.onclick=()=>setTab(st.tab,+b.dataset.k));
+document.querySelectorAll('#views button').forEach(b=>b.onclick=()=>{st.view=+b.dataset.v;document.querySelectorAll('#views button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.v==st.view))});
+$('run').onclick=()=>{const m=cur();if(m.done&&atEnd(m))return;st.playing=!st.playing};
+$('one').onclick=()=>{const m=cur();if(atEnd(m))stepOnce(m)};
+$('rs').onclick=()=>clearAll(cur());
+$('eta').oninput=e=>{cur().eta=+e.target.value};
+c2.addEventListener('pointerdown',e=>{const m=cur(),r=c2.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,W=c2.clientWidth,H=c2.clientHeight;
+if(m.dim==2&&st.view==0){c2.setPointerCapture(e.pointerId);c2._drag={x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY};return}
+if(m.dim==1){const P=pts1(m,W,H);if(x<P.ml||x>W-P.mr)return;begin(m,[clamp(m.rng[0][0]+(x-P.ml)/P.PW*(m.rng[0][1]-m.rng[0][0]),m.rng[0][0]+.02,m.rng[0][1]-.02)]);return}
+const ml=44,mr=14,mt=26,mb=32,A=m.rng[0],B=m.rng[1];if(x<ml||x>W-mr||y<mt||y>H-mb)return;
+begin(m,[A[0]+(x-ml)/(W-ml-mr)*(A[1]-A[0]),B[0]+(1-(y-mt)/(H-mt-mb))*(B[1]-B[0])])});
+c2.addEventListener('pointermove',e=>{const d=c2._drag;if(!d)return;st.yaw+=(e.clientX-d.x)*.01;st.pitch=clamp(st.pitch+(e.clientY-d.y)*.008,.15,1.35);c2._drag={...d,x:e.clientX,y:e.clientY}});
+function pick3D(m,cx,cy){const W=c2.clientWidth,H=c2.clientHeight,[A,B]=m.rng,N=90;let best=null;
+for(let i=0;i<=N;i++)for(let j=0;j<=N;j++){const p=[A[0]+(A[1]-A[0])*i/N,B[0]+(B[1]-B[0])*j/N],[u,v,z]=uvz(m,p[0],p[1],m.J(p)),o=proj(u,v,z,W,H),dd=Math.hypot(o.x-cx,o.y-cy);
+if(dd<9&&(!best||o.d<best.d-.02||(Math.abs(o.d-best.d)<=.02&&dd<best.dd)))best={p,d:o.d,dd}}return best&&best.p}
+const endDrag=e=>{const d=c2._drag;c2._drag=null;if(!d||!e||e.type!=='pointerup')return;if(Math.hypot(e.clientX-d.x0,e.clientY-d.y0)>5)return;
+const m=cur(),r=c2.getBoundingClientRect(),p=pick3D(m,e.clientX-r.left,e.clientY-r.top);if(p)begin(m,p)};c2.addEventListener('pointerup',endDrag);c2.addEventListener('pointercancel',endDrag);
+setTab(0);requestAnimationFrame(tick);
+</script></main></body></html>
