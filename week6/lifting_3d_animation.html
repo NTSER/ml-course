@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lifting to 3D</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f5f6f8;--fg:#1b2130;--mut:#5b6474;--card:#fff;--line:#d8dce4;--ga:#2b59d9;--gc:#d6336c;--gb:#d98a00;--gd:#0b8f6a;--code:#eceff4;--sl:#d3e0ff;--sh:#3d63d6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#11141b;--fg:#e8ebf2;--mut:#98a1b3;--card:#181c25;--line:#2b3140;--ga:#7c9cff;--gc:#ff6b9a;--gb:#ffb84d;--gd:#3ddc9f;--code:#222838;--sl:#1a2547;--sh:#7b97ff}}
+:root[data-theme="dark"]{--bg:#11141b;--fg:#e8ebf2;--mut:#98a1b3;--card:#181c25;--line:#2b3140;--ga:#7c9cff;--gc:#ff6b9a;--gb:#ffb84d;--gd:#3ddc9f;--code:#222838;--sl:#1a2547;--sh:#7b97ff}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:900px;margin:0 auto;padding:20px 16px 32px}
+h1{font:600 26px/1.2 Georgia,"Iowan Old Style",serif;margin:0 0 10px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:8px 14px;border-radius:8px}
+button:disabled{opacity:.45;cursor:default}
+button.pri{background:var(--fg);color:var(--bg);border-color:var(--fg);font-weight:600}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ga);outline-offset:2px}
+.modes{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
+.modes button{border:0;border-radius:0}
+.modes button[aria-pressed="true"]{background:var(--fg);color:var(--bg);font-weight:600}
+.top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.steps{display:flex;gap:6px;margin:0 0 10px}
+.steps i{flex:1;height:6px;border-radius:3px;background:var(--line)}
+.steps i.on{background:var(--fg)}
+.stage{display:flex;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px}
+canvas{display:block;height:min(80vw,360px);min-height:300px;touch-action:pan-y}
+#c1{flex:2 1 260px;min-width:0;width:100%}#c2{flex:3 1 320px;min-width:0;width:100%}
+.ctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.ctl label{display:flex;gap:8px;align-items:center;color:var(--mut)}
+.ctl label b{color:var(--fg);min-width:5.2em;display:inline-block}
+input[type=range]{width:170px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 16px;min-height:150px}
+h2{font:600 18px/1.3 system-ui,sans-serif;margin:0}
+#cap{color:var(--mut);margin:2px 0 8px}
+.eq{font:19px/1.7 "STIX Two Text","Cambria Math",Cambria,Georgia,serif;overflow-x:auto;white-space:nowrap}
+.eq .ar{font:normal 17px system-ui,sans-serif}
+.eq .v{color:var(--ga);font-weight:600}
+.eq .m{color:var(--mut);font:15px/1.6 system-ui,sans-serif}
+.eq .bad{color:var(--gc);font:600 15px/1.6 system-ui,sans-serif}
+.eq .ok{color:var(--gd);font:600 15px/1.6 system-ui,sans-serif}
+@media (max-width:600px){.eq{white-space:normal;font-size:17px}}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 .2em;font-size:.92em;line-height:1.2}
+.fr>span:first-child{border-bottom:1px solid currentColor;padding:0 .25em .04em}
+.fr>span:last-child{padding:.04em .25em 0}
+table{border-collapse:collapse;font-size:14px;margin-top:8px;width:100%}
+th,td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:left}
+th{color:var(--mut);font-weight:500}
+.fl{font:19px/1.7 "STIX Two Text","Cambria Math",Cambria,Georgia,serif;white-space:nowrap}
+.tg{font:600 14px system-ui,sans-serif;display:inline-block;min-width:6.8em}
+@media (max-width:600px){.modes{flex-wrap:wrap}.modes button{padding:8px 10px}.fl{white-space:normal}input[type=range]{width:110px}.ctl label b{min-width:0}}
+
+.chips{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center;color:var(--mut)}
+.chips button{padding:6px 12px}
+@media (max-width:600px){.chips button{padding:6px 10px}}
+
+#c1,#c2{flex:1 1 320px;min-width:0;width:100%}
+.sc{display:flex;justify-content:space-between;color:var(--mut);font:12px system-ui;width:200px;margin-top:-4px}
+.ctl .sl{display:flex;flex-direction:column}
+input[type=range]{width:200px}
+@media (max-width:600px){.ctl label{flex-direction:column;align-items:stretch;width:100%;gap:2px}.ctl .sl{width:100%}input[type=range]{width:100%}.sc{width:100%;margin-top:0}}
+.tg2{display:inline-flex;align-items:center;gap:6px;color:var(--mut)}
+
+#c2{touch-action:none;cursor:grab}#c2:active{cursor:grabbing}
+#gv,#lv{min-width:2.6em;text-align:right}#pv{min-width:0}
+</style></head><body><main>
+<h1>Why add a basis function φ ?</h1>
+<div class="top"><span class="modes" id="tabs"><button data-t="0" aria-pressed="true">Polynomial: φ = x²</button><button data-t="1" aria-pressed="false">Radial: φ = exp(−γ(x−ℓ)²)</button></span></div>
+<div class="stage"><canvas id="c1" aria-label="Data and fits"></canvas><canvas id="c2" aria-label="3D view with the new feature"></canvas></div>
+<div class="ctl"><button id="run" class="pri">Play</button><button id="rs">Reset</button>
+<label><span>Add the feature φ <b id="pv"></b></span><span class="sl"><input type="range" id="pp" min="0" max="100" step="1" value="0"><div class="sc"><span>only x</span><span>x and φ</span></div></span></label>
+<label id="gl" hidden><span>γ <b id="gv"></b></span><span class="sl"><input type="range" id="gg" min="0" max="100" step="1" value="73"><div class="sc"><span>wide bump</span><span>narrow bump</span></div></span></label>
+<label id="ll" hidden><span>ℓ <b id="lv"></b></span><span class="sl"><input type="range" id="lg" min="-20" max="80" step="1" value="30"><div class="sc"><span>−2</span><span>8</span></div></span></label></div>
+<div class="card"><h2 id="ttl"></h2><div id="cap"></div><div class="eq" id="eq"></div><div class="rd" id="rd"></div></div>
+<script>
+const $=id=>document.getElementById(id);
+let seed=5;const rnd=()=>(seed=seed*16807%2147483647)/2147483647;
+const gauss=()=>Math.sqrt(-2*Math.log(rnd()+1e-9))*Math.cos(6.2832*rnd());
+const col=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const F=(v,d=2)=>v.toFixed(d).replace('-','−');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const c1=$('c1'),c2=$('c2'),x1=c1.getContext('2d'),x2=c2.getContext('2d');
+function size(c,x){const d=devicePixelRatio||1,w=Math.round(c.clientWidth*d),h=Math.round(c.clientHeight*d);if(c.width!==w||c.height!==h){c.width=w;c.height=h;x.setTransform(d,0,0,d,0,0)}}
+function dot(ctx,x,y,r,fill,stroke,lw=1.5){ctx.beginPath();ctx.arc(x,y,r,0,6.2832);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke()}}
+const halo=(ctx,t,x,y,c)=>{ctx.lineJoin='round';ctx.lineWidth=4;ctx.strokeStyle=col('--card');ctx.strokeText(t,x,y);ctx.fillStyle=c;ctx.fillText(t,x,y)};
+
+// ---------- two data sets: a U (polynomial feature) and a bump (radial feature)
+const M=40;
+const DS=[
+ {data:Array.from({length:M},()=>{const x=-3+6*rnd();return[x,.8*x*x+.4*x+.5+.5*gauss()]}),shape:'U',L:0},
+ {data:Array.from({length:M+10},()=>{const x=-2+10*rnd();return[x,1+.45*x+3*Math.exp(-1.2*(x-3)**2)+.2*gauss()]}),shape:'bump',L:0}];
+const XR=[[-3,3],[-2,8]],XT=[[-3,0,3],[-2,3,8]];                 // x range and x ticks, per tab
+const gam=sl=>.1*30**(sl/100);                                   // γ from 0.1 to 3
+const st={tab:0,sg:73,l:3,p:0,playing:false,yaw:.75,pitch:.38,drag:null};
+const phiF=(x)=>st.tab==0?x*x/9:Math.exp(-gam(st.sg)*(x-st.l)**2);        // φ, already between 0 and 1
+function solve(A,b){const p=b.length,Mx=A.map((r,i)=>r.concat([b[i]]));for(let i=0;i<p;i++){let q=i;for(let r=i+1;r<p;r++)if(Math.abs(Mx[r][i])>Math.abs(Mx[q][i]))q=r;[Mx[i],Mx[q]]=[Mx[q],Mx[i]];for(let r=i+1;r<p;r++){const k=Mx[r][i]/Mx[i][i];for(let c=i;c<=p;c++)Mx[r][c]-=k*Mx[i][c]}}
+const w=new Array(p).fill(0);for(let i=p-1;i>=0;i--){let s=Mx[i][p];for(let j=i+1;j<p;j++)s-=Mx[i][j]*w[j];w[i]=s/Mx[i][i]}return w}
+function ols(data,feat,yf=y=>y){const P=feat(0).length,A=Array.from({length:P},()=>new Array(P).fill(0)),b=new Array(P).fill(0);
+data.forEach(([x,y])=>{const f=feat(x);for(let i=0;i<P;i++){b[i]+=f[i]*yf(y);for(let j=0;j<P;j++)A[i][j]+=f[i]*f[j]}});return solve(A,b)}
+// everything that depends on the tab (and γ) is recomputed here
+let FIT={key:''};
+function fitAll(){const key=st.tab+':'+(st.tab?st.sg+':'+st.l:0);if(FIT.key==key)return FIT;const D=DS[st.tab].data,ys=D.map(d=>d[1]),lo=Math.min(...ys),hi=Math.max(...ys),mid=(lo+hi)/2,half=(hi-lo)/2*1.08;
+const cx=(XR[st.tab][0]+XR[st.tab][1])/2,hx=(XR[st.tab][1]-XR[st.tab][0])/2,nx=x=>(x-cx)/hx,ny=y=>(y-mid)/half,wl=ols(D,x=>[1,x]),wq=ols(D,x=>[1,x,phiF(x)]);
+const pl=x=>wl[0]+wl[1]*x,pq=x=>wq[0]+wq[1]*x+wq[2]*phiF(x),rm=f=>Math.sqrt(D.reduce((s,[x,y])=>s+(f(x)-y)**2,0)/D.length);
+const wn=ols(D,x=>[1,nx(x),phiF(x)],ny),wm=ols(D,x=>[1,nx(x)],ny);
+FIT={key,D,lo,hi,mid,half,nx,ny,pl,pq,RL:rm(pl),RQ:rm(pq),wn,wm};return FIT}
+const e=t=>t<.5?2*t*t:1-2*(1-t)**2;
+
+// ---------- left: the ordinary (x, y) view
+function drawLeft(){size(c1,x1);const ctx=x1,W=c1.clientWidth,H=c1.clientHeight;if(W<150||H<120)return;ctx.clearRect(0,0,W,H);
+const T=fitAll(),pl=T.pl,pq=T.pq,FG=col('--fg'),MU=col('--mut'),LN=col('--line'),RD=col('--gc'),GR=col('--gd'),p=e(st.p);
+const ml=30,mr=10,mt=34,mb=26,xa=XR[st.tab][0]-.2*(XR[st.tab][1]-XR[st.tab][0])/6,xb=XR[st.tab][1]+.2*(XR[st.tab][1]-XR[st.tab][0])/6,ya=T.lo-.08*(T.hi-T.lo)-.5,yb=T.hi+.08*(T.hi-T.lo)+.5,X=v=>ml+(v-xa)/(xb-xa)*(W-ml-mr),Y=v=>H-mb-(v-ya)/(yb-ya)*(H-mt-mb);
+ctx.fillStyle=FG;ctx.font='600 13px system-ui';ctx.fillText('The data as we see it: y against x',10,16);
+ctx.fillStyle=MU;ctx.font='12px system-ui';const sh=DS[st.tab].shape;ctx.fillText(W<460?`a line cannot follow a ${sh}`:`a straight line cannot follow a ${sh==='U'?'U-shape':'bump'}`,10,29);
+ctx.strokeStyle=LN;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ml,mt);ctx.lineTo(ml,H-mb);ctx.lineTo(W-mr,H-mb);ctx.stroke();
+ctx.fillStyle=MU;ctx.textAlign='center';XT[st.tab].forEach(v=>ctx.fillText(String(v).replace('-','−'),X(v),H-mb+14));ctx.textAlign='right';ctx.fillText('x',W-mr-2,H-mb-6);ctx.textAlign='left';ctx.fillText('y',ml+5,mt+12);
+ctx.save();ctx.beginPath();ctx.rect(ml,mt-2,W-ml-mr,H-mt-mb+4);ctx.clip();
+if(p<.98){ctx.globalAlpha=1-p;ctx.strokeStyle=RD;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(X(xa),Y(pl(xa)));ctx.lineTo(X(xb),Y(pl(xb)));ctx.stroke();ctx.globalAlpha=1}
+if(p>.02){ctx.globalAlpha=p;ctx.strokeStyle=GR;ctx.lineWidth=3;ctx.beginPath();for(let k=0;k<=160;k++){const x=xa+(xb-xa)*k/160;k?ctx.lineTo(X(x),Y(pq(x))):ctx.moveTo(X(x),Y(pq(x)))}ctx.stroke();ctx.globalAlpha=1}
+T.D.forEach(([x,y])=>dot(ctx,X(x),Y(y),3.8,FG));ctx.restore();
+if(st.tab&&p>.02){ctx.globalAlpha=p;ctx.fillStyle=GR;const lx=X(st.l),ly=H-mb;ctx.beginPath();ctx.moveTo(lx,ly-1);ctx.lineTo(lx-5,ly-11);ctx.lineTo(lx+5,ly-11);ctx.closePath();ctx.fill();ctx.font='600 12px system-ui';ctx.textAlign='center';halo(ctx,'ℓ',lx,ly-16,GR);ctx.textAlign='left';ctx.globalAlpha=1}
+ctx.font='600 12px system-ui';if(p<.98){ctx.globalAlpha=1-p;ctx.textAlign=st.tab?'right':'left';halo(ctx,'best straight line',X(st.tab?XR[1][1]-.1:-.2),Y(pl(st.tab?XR[1][1]-.1:-.2))-10,RD);ctx.textAlign='left';ctx.globalAlpha=1}
+if(p>.5){ctx.globalAlpha=Math.min(1,(p-.5)*2);halo(ctx,'with φ',X(st.tab?.2:-2.4),Y(pq(st.tab?.2:-2.4))-(st.tab?-20:12),GR);ctx.globalAlpha=1}}
+
+// ---------- right: the same points in (x, φ = x², y)
+function proj(X,Y,Z,W,H){const zc=Z-.5,cy=Math.cos(st.yaw),sy=Math.sin(st.yaw),cp=Math.cos(st.pitch),sp=Math.sin(st.pitch),
+x1=X*cy-zc*sy,z1=X*sy+zc*cy,y2=Y*cp-z1*sp,z2=Y*sp+z1*cp,s=Math.min(W*.5,H*.62)*.45;return{x:W/2+s*x1,y:H*.52-s*y2,d:z2}}
+function drawRight(){size(c2,x2);const ctx=x2,W=c2.clientWidth,H=c2.clientHeight;if(W<150||H<120)return;ctx.clearRect(0,0,W,H);
+const T=fitAll(),{wn,wm,nx,ny}=T,FG=col('--fg'),MU=col('--mut'),LN=col('--line'),RD=col('--gc'),GR=col('--gd'),p=e(st.p),P=(X,Y,Z)=>proj(X,Y,Z,W,H);
+ctx.fillStyle=FG;ctx.font='600 13px system-ui';ctx.fillText('The same points with a new axis φ',10,16);
+ctx.fillStyle=MU;ctx.font='12px system-ui';ctx.fillText(W<460?'drag to rotate':'each point is lifted by its own φ(x) · drag to rotate',10,29);
+// floor grid
+ctx.strokeStyle=LN;ctx.lineWidth=1;for(let i=0;i<=4;i++){const t=-1+i/2,a=P(t,-1,0),b=P(t,-1,1),c=P(-1,-1,i/4),d=P(1,-1,i/4);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.moveTo(c.x,c.y);ctx.lineTo(d.x,d.y);ctx.stroke()}
+// axes
+ctx.strokeStyle=MU;ctx.lineWidth=1.6;const o=P(-1,-1,0),ax=P(1,-1,0),az=P(-1,-1,1),ay=P(-1,1,0);[ax,az,ay].forEach(q=>{ctx.beginPath();ctx.moveTo(o.x,o.y);ctx.lineTo(q.x,q.y);ctx.stroke()});
+ctx.font='600 12px system-ui';halo(ctx,'x',ax.x+8,ax.y+4,FG);halo(ctx,'φ',az.x+4,az.y+14,FG);halo(ctx,'y',ay.x-4,ay.y-8,FG);
+// scales in the original units, so the picture can be read
+ctx.font='11px system-ui';ctx.fillStyle=MU;const tk=(q,t,dx,dy,al='center')=>{ctx.textAlign=al;halo(ctx,t,q.x+dx,q.y+dy,MU)};
+XT[st.tab].forEach(v=>tk(P(nx(v),-1,0),String(v).replace('-','−'),0,13));
+(st.tab?[0,1]:[0,9]).forEach(v=>tk(P(-1,-1,v/(st.tab?1:9)),String(v),-7,4,'right'));
+[-1,1].forEach(v=>tk(P(-1,v,0),String(Math.round((T.mid+v*T.half)*10)/10).replace('-','−'),-7,4,'right'));ctx.textAlign='left';
+// the new axis is a function of x: its curve on the floor, and a drop line from every point
+if(p>.02){ctx.save();ctx.globalAlpha=Math.min(1,p*1.5);ctx.strokeStyle=MU;ctx.lineWidth=1.8;ctx.setLineDash([5,4]);ctx.beginPath();for(let k=0;k<=120;k++){const x=XR[st.tab][0]+(XR[st.tab][1]-XR[st.tab][0])*k/120,q=P(nx(x),-1,p*phiF(x));k?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)}ctx.stroke();ctx.setLineDash([]);
+ctx.globalAlpha=.13*p;ctx.lineWidth=1;T.D.forEach(([x,y])=>{const a=P(nx(x),ny(y),p*phiF(x)),b=P(nx(x),-1,p*phiF(x));ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()});ctx.restore();
+const e0=P(-1,-1,p*phiF(XR[st.tab][0]));ctx.font='600 11px system-ui';ctx.globalAlpha=p;ctx.textAlign='right';halo(ctx,st.tab?'φ(x)':'φ = x²',e0.x-24,e0.y-6,MU);ctx.textAlign='left';ctx.globalAlpha=1}
+
+// sheets: a line in x ignores φ (red); a plane in x and φ follows the points (green)
+const quad=(f,z1,fill,stroke,al)=>{const c=[[-1,0],[1,0],[1,z1],[-1,z1]].map(([X,Z])=>P(X,clamp(f(X,Z),-1.05,1.05),Z));ctx.beginPath();c.forEach((q,i)=>i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y));ctx.closePath();ctx.globalAlpha=al;ctx.fillStyle=fill;ctx.fill();ctx.globalAlpha=Math.min(1,al*3);ctx.strokeStyle=stroke;ctx.lineWidth=1.6;ctx.stroke();ctx.globalAlpha=1};
+const z1=Math.max(p,.04);
+if(p<.98)quad((X,Z)=>wm[0]+wm[1]*X,z1,RD,RD,.2*(1-p));
+if(p>.02)quad((X,Z)=>wn[0]+wn[1]*X+wn[2]*Z/p,z1,GR,GR,.26*p);
+// points, far to near
+const pts=T.D.map(([x,y])=>({q:P(nx(x),ny(y),p*phiF(x))})).sort((a,b)=>a.q.d-b.q.d);
+pts.forEach(({q})=>dot(ctx,q.x,q.y,4.2,FG,col('--card'),1.2));
+ctx.font='600 12px system-ui';if(p<.02)halo(ctx,'no new axis yet: all points sit at φ = 0 (flat)',10,H-10,MU);
+else if(p>.95){if(T.RQ<.5*T.RL)halo(ctx,'in this space the points lie close to a flat plane',10,H-10,GR);else halo(ctx,'the points are not on a plane: this φ is a poor choice',10,H-10,MU)}}
+
+// ---------- text
+function ui(){const T=fitAll(),p=e(st.p),t=st.tab;$('gl').hidden=!t;$('ll').hidden=!t;$('lv').textContent=st.l.toFixed(1).replace('-','−');$('gv').textContent=gam(st.sg).toFixed(2);$('pv').textContent='';$('run').textContent=st.playing?'Pause':(st.p>=1?'Replay':'Play');$('pp').value=Math.round(st.p*100);
+$('ttl').textContent=p<.02?'Using only x':p>.98?'Using x and φ':'Adding the feature φ';
+$('cap').textContent=p<.02?'Linear regression can only draw a straight line through y and x. It cannot follow a '+DS[t].shape+'.':p>.98?(t?'Close to ℓ the bump φ is non-zero and bends the fit. Far from ℓ, φ ≈ 0, so the fit is just a straight line again. It is a plane in (x, φ, y).':'A plane in (x, φ, y) is still linear in θ, so linear regression can fit it. Seen from the side, the same plane is the green curve.'):'Each point is lifted up the new axis by its own φ(x). The red sheet cannot use the new axis. The green plane can.';
+$('eq').innerHTML=(p<.98?`<div style="color:var(--gc);opacity:${1-p}">ŷ = θ<sub>0</sub> + θ<sub>1</sub>x</div>`:'')+(p>.02?`<div style="color:var(--gd);opacity:${.35+.65*p}">ŷ = θ<sub>0</sub> + θ<sub>1</sub>x + θ<sub>2</sub>φ <span class="m">&nbsp;with φ = ${t?'exp(−γ(x − ℓ)<sup>2</sup>), ℓ = '+st.l.toFixed(1).replace('-','−'):'x<sup>2</sup>'}</span></div>`:'');
+$('rd').innerHTML=`RMSE: straight line <b style="color:var(--gc)">${F(T.RL)}</b>`+(p>.98?` · with φ <b style="color:var(--gd)">${F(T.RQ)}</b>`:'')}
+let last=0;function tick(ts){const dt=Math.min(.05,(ts-(last||ts))/1000);last=ts;if(st.playing){st.p=Math.min(1,st.p+dt/3.2);if(st.p>=1)st.playing=false}drawLeft();drawRight();ui();requestAnimationFrame(tick)}
+$('lg').oninput=ev=>{st.l=+ev.target.value/10};
+$('gg').oninput=ev=>{st.sg=+ev.target.value};
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{st.tab=+b.dataset.t;st.p=0;st.playing=false;document.querySelectorAll('#tabs button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.t==st.tab))});
+$('pp').oninput=ev=>{st.p=+ev.target.value/100;st.playing=false};
+$('run').onclick=()=>{if(st.p>=1){st.p=0;st.playing=true}else st.playing=!st.playing};
+$('rs').onclick=()=>{st.p=0;st.playing=false;st.yaw=.75;st.pitch=.38};
+c2.addEventListener('pointerdown',ev=>{st.drag={x:ev.clientX,y:ev.clientY,yaw:st.yaw,pitch:st.pitch};c2.setPointerCapture(ev.pointerId)});
+c2.addEventListener('pointermove',ev=>{if(!st.drag)return;st.yaw=st.drag.yaw-(ev.clientX-st.drag.x)*.01;st.pitch=clamp(st.drag.pitch+(ev.clientY-st.drag.y)*.01,-.2,1.3)});
+['pointerup','pointercancel'].forEach(n=>c2.addEventListener(n,()=>st.drag=null));
+requestAnimationFrame(tick);
+</script></main></body></html>

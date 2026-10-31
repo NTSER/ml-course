@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learning curves</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f5f6f8;--fg:#1b2130;--mut:#5b6474;--card:#fff;--line:#d8dce4;--ga:#2b59d9;--gc:#d6336c;--gb:#d98a00;--gd:#0b8f6a;--code:#eceff4;--sl:#d3e0ff;--sh:#3d63d6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#11141b;--fg:#e8ebf2;--mut:#98a1b3;--card:#181c25;--line:#2b3140;--ga:#7c9cff;--gc:#ff6b9a;--gb:#ffb84d;--gd:#3ddc9f;--code:#222838;--sl:#1a2547;--sh:#7b97ff}}
+:root[data-theme="dark"]{--bg:#11141b;--fg:#e8ebf2;--mut:#98a1b3;--card:#181c25;--line:#2b3140;--ga:#7c9cff;--gc:#ff6b9a;--gb:#ffb84d;--gd:#3ddc9f;--code:#222838;--sl:#1a2547;--sh:#7b97ff}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:900px;margin:0 auto;padding:20px 16px 32px}
+h1{font:600 26px/1.2 Georgia,"Iowan Old Style",serif;margin:0 0 10px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:8px 14px;border-radius:8px}
+button:disabled{opacity:.45;cursor:default}
+button.pri{background:var(--fg);color:var(--bg);border-color:var(--fg);font-weight:600}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ga);outline-offset:2px}
+.modes{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
+.modes button{border:0;border-radius:0}
+.modes button[aria-pressed="true"]{background:var(--fg);color:var(--bg);font-weight:600}
+.top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.steps{display:flex;gap:6px;margin:0 0 10px}
+.steps i{flex:1;height:6px;border-radius:3px;background:var(--line)}
+.steps i.on{background:var(--fg)}
+.stage{display:flex;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px}
+canvas{display:block;height:min(80vw,360px);min-height:300px;touch-action:pan-y}
+#c1{flex:2 1 260px;min-width:0;width:100%}#c2{flex:3 1 320px;min-width:0;width:100%}
+.ctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.ctl label{display:flex;gap:8px;align-items:center;color:var(--mut)}
+.ctl label b{color:var(--fg);min-width:5.2em;display:inline-block}
+input[type=range]{width:170px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 16px;min-height:150px}
+h2{font:600 18px/1.3 system-ui,sans-serif;margin:0}
+#cap{color:var(--mut);margin:2px 0 8px}
+.eq{font:19px/1.7 "STIX Two Text","Cambria Math",Cambria,Georgia,serif;overflow-x:auto;white-space:nowrap}
+.eq .ar{font:normal 17px system-ui,sans-serif}
+.eq .v{color:var(--ga);font-weight:600}
+.eq .m{color:var(--mut);font:15px/1.6 system-ui,sans-serif}
+.eq .bad{color:var(--gc);font:600 15px/1.6 system-ui,sans-serif}
+.eq .ok{color:var(--gd);font:600 15px/1.6 system-ui,sans-serif}
+@media (max-width:600px){.eq{white-space:normal;font-size:17px}}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 .2em;font-size:.92em;line-height:1.2}
+.fr>span:first-child{border-bottom:1px solid currentColor;padding:0 .25em .04em}
+.fr>span:last-child{padding:.04em .25em 0}
+table{border-collapse:collapse;font-size:14px;margin-top:8px;width:100%}
+th,td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:left}
+th{color:var(--mut);font-weight:500}
+.fl{font:19px/1.7 "STIX Two Text","Cambria Math",Cambria,Georgia,serif;white-space:nowrap}
+.tg{font:600 14px system-ui,sans-serif;display:inline-block;min-width:6.8em}
+@media (max-width:600px){.modes{flex-wrap:wrap}.modes button{padding:8px 10px}.fl{white-space:normal}input[type=range]{width:110px}.ctl label b{min-width:0}}
+
+.chips{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center;color:var(--mut)}
+.chips button{padding:6px 12px}
+@media (max-width:600px){.chips button{padding:6px 10px}}
+
+#c1,#c2{flex:1 1 320px;min-width:0;width:100%}
+input[type=range]#nn{width:240px}
+.rd{color:var(--mut);font:15px/1.7 system-ui,sans-serif}.rd b{color:var(--fg)}
+.vd{font:600 16px/1.5 system-ui,sans-serif;margin:6px 0 2px}
+.vd.ok{color:var(--gd)}.vd.bad{color:var(--gc)}
+@media (max-width:600px){input[type=range]#nn{width:150px}}
+
+#c0{width:100%;height:92px;min-height:92px}
+#stage0{margin-bottom:10px}
+.cd{font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--mut);background:var(--code);border-radius:8px;padding:6px 10px;margin-top:8px;overflow-x:auto;white-space:pre-wrap}
+.ph{color:var(--mut);font:15px/1.6 system-ui,sans-serif;margin-top:4px}
+</style></head><body><main>
+<h1>Learning curves</h1>
+<div class="top"><span class="modes" id="tabs"><button data-t="0" aria-pressed="true">Linear</button><button data-t="1" aria-pressed="false">Quadratic</button><button data-t="2" aria-pressed="false">10th-degree</button></span>
+<span class="modes" id="folds"></span></div>
+<div class="stage" id="stage0"><canvas id="c0" aria-label="Cross-validation folds"></canvas></div>
+<div class="stage"><canvas id="c1" aria-label="Data and fitted model"></canvas><canvas id="c2" aria-label="Learning curves"></canvas></div>
+<div class="ctl"><button id="run" class="pri">Play</button><button id="rs">Reset</button>
+<label>Training set size <b id="nv">n = 1</b><input type="range" id="nn" min="0" max="39" step="1" value="0"></label></div>
+<div class="card"><h2 id="ttl"></h2><div class="eq" id="eq"></div><div class="vd" id="vd"></div><div class="rd" id="rd"></div><div class="ph" id="ph"></div><div class="cd" id="cd"></div></div>
+<script>
+const $=id=>document.getElementById(id);
+let seed=450;const rnd=()=>(seed=seed*16807%2147483647)/2147483647;
+const gauss=()=>Math.sqrt(-2*Math.log(rnd()+1e-9))*Math.cos(6.2832*rnd());
+const col=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const F=(v,d=2)=>v.toFixed(d).replace('-','−');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const c0=$('c0'),c1=$('c1'),c2=$('c2'),x0=c0.getContext('2d'),x1=c1.getContext('2d'),x2=c2.getContext('2d');
+function size(c,x){const d=devicePixelRatio||1,w=Math.round(c.clientWidth*d),h=Math.round(c.clientHeight*d);if(c.width!==w||c.height!==h){c.width=w;c.height=h;x.setTransform(d,0,0,d,0,0)}}
+function dot(ctx,x,y,r,fill,stroke,lw=1.5){ctx.beginPath();ctx.arc(x,y,r,0,6.2832);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke()}}
+const halo=(ctx,t,x,y,c)=>{ctx.lineJoin='round';ctx.lineWidth=4;ctx.strokeStyle=col('--card');ctx.strokeText(t,x,y);ctx.fillStyle=c;ctx.fillText(t,x,y)};
+
+// ---------- m = 50 instances: a U-shaped relationship plus noise
+const m=50,K=5,FS=m/K,NTR=m-FS;                        // 5-fold CV: 10 validation instances, 40 training instances per fold
+const DATA=Array.from({length:m},()=>{const x=-3+6*rnd();return[x,.9*x*x+.5*x+1+1.1*gauss()]});
+// train_sizes = np.linspace(0.01, 1.0, 40)  ->  absolute sizes (as in scikit-learn: floor, at least 1)
+const SIZES=[...new Set(Array.from({length:40},(_,i)=>Math.max(1,Math.floor((.01+i*.99/39)*NTR))))];
+const NS=SIZES.length;
+
+// ---------- LinearRegression on PolynomialFeatures(degree, include_bias=False): least squares, minimum-norm (SVD) solution
+function jacobi(B,rows,k){const V=Array.from({length:k},(_,i)=>Array.from({length:k},(_,j)=>i==j?1:0));
+for(let sw=0;sw<80;sw++){let rot=0;for(let p=0;p<k-1;p++)for(let q=p+1;q<k;q++){let a=0,b=0,g=0;for(let i=0;i<rows;i++){a+=B[i][p]**2;b+=B[i][q]**2;g+=B[i][p]*B[i][q]}
+if(g==0||Math.abs(g)<=1e-15*Math.sqrt(a*b))continue;rot++;const z=(b-a)/(2*g),t=Math.sign(z||1)/(Math.abs(z)+Math.sqrt(1+z*z)),c=1/Math.sqrt(1+t*t),s=c*t;
+for(let i=0;i<rows;i++){const u=B[i][p],v=B[i][q];B[i][p]=c*u-s*v;B[i][q]=s*u+c*v}for(let i=0;i<k;i++){const u=V[i][p],v=V[i][q];V[i][p]=c*u-s*v;V[i][q]=s*u+c*v}}
+if(!rot)break}
+return{B,V,S:Array.from({length:k},(_,j)=>Math.sqrt(B.reduce((s,r)=>s+r[j]**2,0)))}}
+function lstsq(A,y){const n=A.length,p=A[0].length,w=new Array(p).fill(0);
+if(n>=p){const{B,V,S}=jacobi(A.map(r=>r.slice()),n,p),sm=Math.max(...S);for(let j=0;j<p;j++){if(S[j]<=2.2e-16*sm)continue;let d=0;for(let i=0;i<n;i++)d+=B[i][j]*y[i];d/=S[j]*S[j];for(let r=0;r<p;r++)w[r]+=V[r][j]*d}}
+else{const At=Array.from({length:p},(_,i)=>Array.from({length:n},(_,j)=>A[j][i])),{B,V,S}=jacobi(At,p,n),sm=Math.max(...S);for(let j=0;j<n;j++){if(S[j]<=2.2e-16*sm)continue;let d=0;for(let i=0;i<n;i++)d+=V[i][j]*y[i];d/=S[j];for(let r=0;r<p;r++)w[r]+=B[r][j]/S[j]*d}}
+return w}
+const feats=(x,d)=>Array.from({length:d},(_,k)=>x**(k+1));
+function fitLR(pts,d){const n=pts.length,X=pts.map(([x])=>feats(x,d)),mx=Array.from({length:d},(_,k)=>X.reduce((s,r)=>s+r[k],0)/n),my=pts.reduce((s,[,y])=>s+y,0)/n,
+w=lstsq(X.map(r=>r.map((v,k)=>v-mx[k])),pts.map(([,y])=>y-my));return{w,b:my-mx.reduce((s,v,k)=>s+v*w[k],0),d}}
+const pr=(M,x)=>M.b+feats(x,M.d).reduce((s,v,k)=>s+v*M.w[k],0),rmse=(M,pts)=>Math.sqrt(pts.reduce((s,[x,y])=>s+(pr(M,x)-y)**2,0)/pts.length);
+const valIdx=f=>Array.from({length:FS},(_,i)=>f*FS+i),trnIdx=f=>Array.from({length:m},(_,i)=>i).filter(i=>i<f*FS||i>=(f+1)*FS);
+
+const MODELS=[
+{deg:1,name:'Linear regression',eq:'ŷ = θ<sub>0</sub> + θ<sub>1</sub>x',code:'learning_curve(LinearRegression(), X, y, …)',k:'bad',
+ vd:'Underfitting: both curves have reached a plateau, they are close together and fairly high. More training examples will not help: use a better model or better features.',
+ plateau:'Both curves have reached a plateau: they are close and fairly high.'},
+{deg:2,name:'Quadratic (2nd-degree polynomial)',eq:'ŷ = θ<sub>0</sub> + θ<sub>1</sub>x + θ<sub>2</sub>x<sup>2</sup>',code:'learning_curve(make_pipeline(PolynomialFeatures(degree=2, include_bias=False), LinearRegression()), X, y, …)',k:'ok',
+ vd:'Better fit: both curves plateau lower and close together. A curved model follows the data much better than a line.',
+ plateau:'Both curves have reached a plateau: they are low and close together.'},
+{deg:10,name:'10th-degree polynomial',eq:'ŷ = θ<sub>0</sub> + θ<sub>1</sub>x + θ<sub>2</sub>x<sup>2</sup> + … + θ<sub>10</sub>x<sup>10</sup>',code:'learning_curve(make_pipeline(PolynomialFeatures(degree=10, include_bias=False), LinearRegression()), X, y, …)',k:'bad',
+ vd:'Overfitting: the training error is much lower, and there is a gap between the curves: the model does better on the training data than on the validation data. With a much larger training set the two curves would keep getting closer.',
+ plateau:'The training error stays low, but a gap remains between the curves.'}];
+for(const M of MODELS){M.tr=Array.from({length:K},()=>[]);M.va=Array.from({length:K},()=>[]);M.fit=Array.from({length:K},()=>[]);M.mtr=[];M.mva=[];
+ for(let f=0;f<K;f++){const val=valIdx(f).map(i=>DATA[i]),trn=trnIdx(f).map(i=>DATA[i]);
+  SIZES.forEach((n,j)=>{const s=trn.slice(0,n),fm=fitLR(s,M.deg);M.fit[f][j]=fm;M.tr[f][j]=rmse(fm,s);M.va[f][j]=rmse(fm,val)})}
+ for(let j=0;j<NS;j++){M.mtr[j]=M.tr.reduce((s,a)=>s+a[j],0)/K;M.mva[j]=M.va.reduce((s,a)=>s+a[j],0)/K}}
+const st={tab:0,fold:0,j:0,playing:false,acc:0};
+const cur=()=>MODELS[st.tab];
+
+// ---------- top strip: the 5 folds
+function drawStrip(){size(c0,x0);const ctx=x0,W=c0.clientWidth,H=c0.clientHeight;if(W<150)return;ctx.clearRect(0,0,W,H);
+const FG=col('--fg'),MU=col('--mut'),LN=col('--line'),BL=col('--ga'),n=SIZES[st.j],f=st.fold,ml=10,mr=10,cw=(W-ml-mr)/m,y=30,h=22;
+ctx.fillStyle=FG;ctx.font='600 13px system-ui';ctx.fillText(W<460?'5-fold CV':`5-fold cross-validation (cv=5): the ${m} instances in 5 folds`,10,16);
+const tr=trnIdx(f);const rank=new Map(tr.map((i,r)=>[i,r]));
+for(let i=0;i<m;i++){const x=ml+i*cw;let c,a=1;if(i>=f*FS&&i<(f+1)*FS){c=BL}else if(rank.get(i)<n){c=FG}else{c=MU;a=.25}
+ctx.globalAlpha=a;ctx.fillStyle=c;ctx.fillRect(x+.5,y,Math.max(1,cw-1),h);ctx.globalAlpha=1}
+for(let q=0;q<K;q++){const x=ml+q*FS*cw,w=FS*cw;ctx.strokeStyle=q==f?BL:LN;ctx.lineWidth=q==f?2:1;ctx.strokeRect(x,y-2,w,h+4);ctx.fillStyle=q==f?BL:MU;ctx.font=(q==f?'600 ':'')+'12px system-ui';ctx.textAlign='center';ctx.fillText('Fold '+(q+1),x+w/2,y+h+18);ctx.textAlign='left'}
+ctx.font='12px system-ui';let lx=W-mr;const lg=(t,c,a)=>{ctx.textAlign='right';ctx.fillStyle=MU;ctx.fillText(t,lx,16);lx-=ctx.measureText(t).width+4;ctx.globalAlpha=a;ctx.fillStyle=c;ctx.fillRect(lx-10,7,10,10);ctx.globalAlpha=1;lx-=20};
+if(W>=560){lg(`validation fold (${FS})`,BL,1);lg(`training: first ${n} of ${NTR}`,FG,1)}else{lg('valid.',BL,1);lg('train',FG,1)}ctx.textAlign='left'}
+
+// ---------- left: data and the model fitted on the first n training instances of the chosen fold
+function drawData(M){size(c1,x1);const ctx=x1,W=c1.clientWidth,H=c1.clientHeight;if(W<150||H<120)return;ctx.clearRect(0,0,W,H);
+const FG=col('--fg'),MU=col('--mut'),LN=col('--line'),BL=col('--ga'),GR=col('--gd'),f=st.fold,n=SIZES[st.j];
+const ml=30,mr=10,mt=28,mb=26,xa=-3.2,xb=3.2,ya=-3,yb=13,X=v=>ml+(v-xa)/(xb-xa)*(W-ml-mr),Y=v=>H-mb-(v-ya)/(yb-ya)*(H-mt-mb);
+ctx.fillStyle=FG;ctx.font='600 13px system-ui';ctx.fillText(`Model fitted on ${n} training instance${n>1?'s':''} (fold ${f+1})`,10,16);
+ctx.strokeStyle=LN;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ml,mt);ctx.lineTo(ml,H-mb);ctx.lineTo(W-mr,H-mb);ctx.stroke();
+ctx.fillStyle=MU;ctx.font='12px system-ui';ctx.fillText('y',12,mt+4);ctx.textAlign='center';ctx.fillText('x',(ml+W-mr)/2,H-6);ctx.textAlign='left';
+ctx.save();ctx.beginPath();ctx.rect(ml,mt-2,W-ml-mr,H-mt-mb+4);ctx.clip();
+const trn=trnIdx(f),used=new Set(trn.slice(0,n));
+trnIdx(f).forEach(i=>{if(!used.has(i)){ctx.globalAlpha=.3;dot(ctx,X(DATA[i][0]),Y(DATA[i][1]),3,MU);ctx.globalAlpha=1}});
+valIdx(f).forEach(i=>dot(ctx,X(DATA[i][0]),Y(DATA[i][1]),3.6,null,BL,1.5));
+const fm=M.fit[f][st.j];ctx.strokeStyle=GR;ctx.lineWidth=2.8;ctx.beginPath();for(let k=0;k<=240;k++){const x=xa+(xb-xa)*k/240,y=pr(fm,x);k?ctx.lineTo(X(x),Y(y)):ctx.moveTo(X(x),Y(y))}ctx.stroke();
+trn.slice(0,n).forEach(i=>dot(ctx,X(DATA[i][0]),Y(DATA[i][1]),3.8,FG));ctx.restore()}
+
+// ---------- right: learning curves (mean over the 5 folds, like the book) + the chosen fold
+function drawCurves(M){size(c2,x2);const ctx=x2,W=c2.clientWidth,H=c2.clientHeight;if(W<150||H<120)return;ctx.clearRect(0,0,W,H);
+const FG=col('--fg'),MU=col('--mut'),LN=col('--line'),RD=col('--gc'),BL=col('--ga'),nw=W<460,f=st.fold;
+const ml=44,mr=14,mt=48,mb=34,PW=W-ml-mr,PH=H-mt-mb,YM=4,XM=NTR,px=n=>ml+n/XM*PW,py=e=>mt+PH-clamp(e,0,YM)/YM*PH;
+ctx.fillStyle=FG;ctx.font='600 13px system-ui';ctx.fillText(nw?'Learning curves':'Learning curves (mean over the 5 folds)',10,16);
+ctx.font='12px system-ui';let lx=W-mr;const lg=(t,c)=>{ctx.textAlign='right';ctx.fillStyle=c;ctx.fillText('■ '+t,lx,nw?29:16);lx-=ctx.measureText('■ '+t).width+12};lg('valid',BL);lg('train',RD);ctx.textAlign='left';
+ctx.fillStyle=MU;ctx.font='11px system-ui';ctx.fillText(`thin lines: fold ${f+1} only`,10,29);
+ctx.strokeStyle=LN;ctx.lineWidth=1;for(let e=0;e<=4;e++){ctx.beginPath();ctx.moveTo(ml,py(e));ctx.lineTo(W-mr,py(e));ctx.stroke()}
+ctx.fillStyle=MU;ctx.textAlign='right';ctx.font='11px system-ui';for(let e=0;e<=4;e++)ctx.fillText(e,ml-6,py(e)+4);ctx.fillText('RMSE',ml-6,mt-8);
+ctx.textAlign='center';for(let n=0;n<=NTR;n+=NTR/4)ctx.fillText(n,px(n),mt+PH+15);ctx.font='12px system-ui';ctx.fillText('Training set size',ml+PW/2,mt+PH+29);ctx.textAlign='left';
+ctx.save();ctx.beginPath();ctx.rect(ml,mt-2,PW+2,PH+4);ctx.clip();
+const line=(arr,c,lw,al,mark)=>{ctx.globalAlpha=al;ctx.strokeStyle=c;ctx.lineWidth=lw;ctx.beginPath();for(let j=0;j<=st.j;j++){const x=px(SIZES[j]),y=py(arr[j]);j?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke();
+if(mark){ctx.lineWidth=1.6;for(let j=0;j<=st.j;j++){const x=px(SIZES[j]),y=py(arr[j]);ctx.beginPath();ctx.moveTo(x-3,y);ctx.lineTo(x+3,y);ctx.moveTo(x,y-3);ctx.lineTo(x,y+3);ctx.stroke()}}ctx.globalAlpha=1};
+line(M.va[f],BL,1.4,.45);line(M.tr[f],RD,1.4,.45);
+line(M.mva,BL,3,1);line(M.mtr,RD,2,1,true);
+const a=M.mtr[st.j],b=M.mva[st.j],xn=px(SIZES[st.j]);
+ctx.strokeStyle=MU;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(xn,py(a));ctx.lineTo(xn,py(b));ctx.stroke();
+dot(ctx,xn,py(a),5,RD,col('--card'),2);dot(ctx,xn,py(b),5,BL,col('--card'),2);ctx.restore();
+if(b>YM){ctx.fillStyle=BL;ctx.font='600 11px system-ui';ctx.textAlign='left';halo(ctx,'▲ validation error off the scale',ml+8,mt+14,BL)}
+else if(b-a>.3&&st.j>3){ctx.font='600 12px system-ui';const gy=(py(a)+py(b))/2,r=xn>W*.6;ctx.textAlign=r?'right':'left';halo(ctx,'gap',xn+(r?-9:9),gy+4,FG);ctx.textAlign='left'}}
+
+// ---------- text
+function ui(M){const j=st.j,n=SIZES[j],p=M.deg+1,a=M.mtr[j],b=M.mva[j];
+$('ttl').textContent=M.name;$('eq').innerHTML=M.eq;$('vd').textContent=M.vd;$('vd').className='vd '+M.k;
+$('nv').textContent='n = '+n;$('nn').value=j;$('run').textContent=st.playing?'Pause':(j>=NS-1?'Replay':'Play');
+$('rd').innerHTML=`n = <b>${n}</b> · training error <b>${F(a)}</b> · validation error <b>${b>9?'> 9':F(b)}</b> <span style="opacity:.8">(mean of the 5 folds)</span>`;
+let ph;if(n<=p)ph=`With only ${n} instance${n>1?'s':''} the model can fit them perfectly, so the training error is 0. But it cannot generalize: the validation error is large.`;
+else if(n<35)ph='As instances are added, the training error goes up (the model cannot fit them all perfectly) and the validation error goes down (the model learns).';
+else ph=M.plateau;
+$('ph').textContent=ph;$('cd').textContent=M.code.replace('…','train_sizes=np.linspace(0.01, 1.0, 40), cv=5, scoring="neg_root_mean_squared_error"')}
+function tick(ts){const dt=Math.min(.05,(ts-(tick.l||ts))/1000);tick.l=ts;
+if(st.playing){st.acc+=dt*7;const k=Math.floor(st.acc);st.acc-=k;st.j=Math.min(NS-1,st.j+k);if(st.j>=NS-1)st.playing=false}
+const M=cur();drawStrip();drawData(M);drawCurves(M);ui(M);requestAnimationFrame(tick)}
+$('folds').innerHTML='<button disabled style="border:0;background:none;color:var(--mut)">Fold shown</button>'+Array.from({length:K},(_,q)=>`<button data-f="${q}" aria-pressed="${q==0}">${q+1}</button>`).join('');
+$('folds').querySelectorAll('button[data-f]').forEach(b=>b.onclick=()=>{st.fold=+b.dataset.f;$('folds').querySelectorAll('button[data-f]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.f==st.fold))});
+$('run').onclick=()=>{if(st.j>=NS-1){st.j=0;st.playing=true}else st.playing=!st.playing;st.acc=0};
+$('rs').onclick=()=>{st.j=0;st.playing=false};
+$('nn').max=NS-1;$('nn').oninput=e=>{st.j=+e.target.value;st.playing=false};
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{st.tab=+b.dataset.t;document.querySelectorAll('#tabs button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.t==st.tab))});
+requestAnimationFrame(tick);
+</script></main></body></html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Regularization: Ridge, Lasso, Elastic Net</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f5f6f8;--fg:#1b2130;--mut:#5b6474;--card:#fff;--line:#d8dce4;--ga:#2b59d9;--gc:#d6336c;--gb:#d98a00;--gd:#0b8f6a;--code:#eceff4;--sl:#d3e0ff;--sh:#3d63d6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#11141b;--fg:#e8ebf2;--mut:#98a1b3;--card:#181c25;--line:#2b3140;--ga:#7c9cff;--gc:#ff6b9a;--gb:#ffb84d;--gd:#3ddc9f;--code:#222838;--sl:#1a2547;--sh:#7b97ff}}
+:root[data-theme="dark"]{--bg:#11141b;--fg:#e8ebf2;--mut:#98a1b3;--card:#181c25;--line:#2b3140;--ga:#7c9cff;--gc:#ff6b9a;--gb:#ffb84d;--gd:#3ddc9f;--code:#222838;--sl:#1a2547;--sh:#7b97ff}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:900px;margin:0 auto;padding:20px 16px 32px}
+h1{font:600 26px/1.2 Georgia,"Iowan Old Style",serif;margin:0 0 10px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:8px 14px;border-radius:8px}
+button:disabled{opacity:.45;cursor:default}
+button.pri{background:var(--fg);color:var(--bg);border-color:var(--fg);font-weight:600}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ga);outline-offset:2px}
+.modes{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
+.modes button{border:0;border-radius:0}
+.modes button[aria-pressed="true"]{background:var(--fg);color:var(--bg);font-weight:600}
+.top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.steps{display:flex;gap:6px;margin:0 0 10px}
+.steps i{flex:1;height:6px;border-radius:3px;background:var(--line)}
+.steps i.on{background:var(--fg)}
+.stage{display:flex;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px}
+canvas{display:block;height:min(80vw,360px);min-height:300px;touch-action:pan-y}
+#c1{flex:2 1 260px;min-width:0;width:100%}#c2{flex:3 1 320px;min-width:0;width:100%}
+.ctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.ctl label{display:flex;gap:8px;align-items:center;color:var(--mut)}
+.ctl label b{color:var(--fg);min-width:5.2em;display:inline-block}
+input[type=range]{width:170px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 16px;min-height:0}
+h2{font:600 18px/1.3 system-ui,sans-serif;margin:0}
+#cap{color:var(--mut);margin:2px 0 8px}
+.eq{font:19px/1.7 "STIX Two Text","Cambria Math",Cambria,Georgia,serif;overflow-x:auto;white-space:nowrap}
+.eq .ar{font:normal 17px system-ui,sans-serif}
+.eq .v{color:var(--ga);font-weight:600}
+.eq .m{color:var(--mut);font:15px/1.6 system-ui,sans-serif}
+.eq .bad{color:var(--gc);font:600 15px/1.6 system-ui,sans-serif}
+.eq .ok{color:var(--gd);font:600 15px/1.6 system-ui,sans-serif}
+@media (max-width:600px){.eq{white-space:normal;font-size:17px}}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 .2em;font-size:.92em;line-height:1.2}
+.fr>span:first-child{border-bottom:1px solid currentColor;padding:0 .25em .04em}
+.fr>span:last-child{padding:.04em .25em 0}
+table{border-collapse:collapse;font-size:14px;margin-top:8px;width:100%}
+th,td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:left}
+th{color:var(--mut);font-weight:500}
+.fl{font:19px/1.7 "STIX Two Text","Cambria Math",Cambria,Georgia,serif;white-space:nowrap}
+.tg{font:600 14px system-ui,sans-serif;display:inline-block;min-width:6.8em}
+@media (max-width:600px){.modes{flex-wrap:wrap}.modes button{padding:8px 10px}.fl{white-space:normal}input[type=range]{width:110px}.ctl label b{min-width:0}}
+
+.chips{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center;color:var(--mut)}
+.chips button{padding:6px 12px}
+@media (max-width:600px){.chips button{padding:6px 10px}}
+
+#c1,#c2{flex:1 1 320px;min-width:0;width:100%}
+#c3{width:100%;height:230px;min-height:200px}
+#stage3{margin-top:10px}
+input[type=range]#al,input[type=range]#rr{width:280px}
+.rd{color:var(--mut);font:15px/1.7 system-ui,sans-serif}.rd b{color:var(--fg)}
+.sc{display:flex;justify-content:space-between;color:var(--mut);font:12px system-ui;width:280px;margin-top:-4px}
+@media (max-width:600px){.ctl label{flex-direction:column;align-items:stretch;width:100%;gap:2px}.ctl label>span:last-child{display:block;width:100%}input[type=range]#al,input[type=range]#rr{width:100%}.sc{width:100%;margin-top:0}}
+.sp{width:145px}@media (max-width:600px){.sp{display:none}}
+</style></head><body><main>
+<h1>Regularization: Ridge, Lasso, Elastic Net</h1>
+<div class="top"><span class="modes" id="tabs"><button data-t="0" aria-pressed="true">Effect on the fit</button><button data-t="1" aria-pressed="false">Geometry</button></span>
+<span class="modes" id="modes"><button data-k="0" aria-pressed="true">Ridge</button><button data-k="1" aria-pressed="false">Lasso</button><button data-k="2" aria-pressed="false">Elastic Net</button></span></div>
+<div class="stage"><canvas id="c1" aria-label="Left panel"></canvas><canvas id="c2" aria-label="Right panel"></canvas></div>
+<div class="ctl"><button id="rs">Reset</button>
+<label><span>Penalty strength <b id="av">α = 0</b></span><span><input type="range" id="al" min="0" max="100" step="1" value="0"><div class="sc" id="sc"></div></span></label></div>
+<div class="ctl" id="rl" hidden><span class="sp"></span><label><span>Mix <b id="rv">r = 0.50</b></span><span><input type="range" id="rr" min="0" max="20" step="1" value="10"><div class="sc"><span>r = 0: Ridge</span><span>r = 1: Lasso</span></div></span></label></div>
+<div class="card"><h2 id="ttl"></h2><div id="cap"></div><div class="eq" id="eq"></div></div>
+<script>
+const $=id=>document.getElementById(id);
+let seed=3;const rnd=()=>(seed=seed*16807%2147483647)/2147483647;
+const gauss=()=>Math.sqrt(-2*Math.log(rnd()+1e-9))*Math.cos(6.2832*rnd());
+const col=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const F=(v,d=2)=>(Math.abs(v)<.5*10**-d?0:v).toFixed(d).replace('-','−');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const hex=h=>{h=h.replace('#','');return[0,2,4].map(i=>parseInt(h.substr(i,2),16))};
+const ramp=(a,b,t)=>`rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*t)).join()})`;
+const c1=$('c1'),c2=$('c2'),x1=c1.getContext('2d'),x2=c2.getContext('2d');
+function size(c,x){const d=devicePixelRatio||1,w=Math.round(c.clientWidth*d),h=Math.round(c.clientHeight*d);if(c.width!==w||c.height!==h){c.width=w;c.height=h;x.setTransform(d,0,0,d,0,0)}}
+function dot(ctx,x,y,r,fill,stroke,lw=1.5){ctx.beginPath();ctx.arc(x,y,r,0,6.2832);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke()}}
+const halo=(ctx,t,x,y,c)=>{ctx.lineJoin='round';ctx.lineWidth=4;ctx.strokeStyle=col('--card');ctx.strokeText(t,x,y);ctx.fillStyle=c;ctx.fillText(t,x,y)};
+const MC=['--ga','--gb','--gd'];                         // ridge = blue, lasso = amber
+const fa=a=>a<=0?'0':a<1e-3?a.toExponential(0).replace('e-','e−'):a<.1?a.toFixed(3):a<10?a.toFixed(2):a.toFixed(1);
+function solve(A,b){const p=b.length,M=A.map((r,i)=>r.concat([b[i]]));for(let i=0;i<p;i++){let q=i;for(let r=i+1;r<p;r++)if(Math.abs(M[r][i])>Math.abs(M[q][i]))q=r;[M[i],M[q]]=[M[q],M[i]];for(let r=i+1;r<p;r++){const k=M[r][i]/M[i][i];for(let c=i;c<=p;c++)M[r][c]-=k*M[i][c]}}
+const w=new Array(p).fill(0);for(let i=p-1;i>=0;i--){let s=M[i][p];for(let j=i+1;j<p;j++)s-=M[i][j]*w[j];w[i]=s/M[i][i]}return w}
+// penalised least squares:  J(θ) = MSE(θ) + α Σθ²   or   MSE(θ) + α Σ|θ|     (θ0 is not penalised)
+// MSE(θ) = θᵀSθ − 2cᵀθ + const   with S = ZᵀZ/m, c = ZᵀY/m
+const ridgeSol=(S,c,a)=>solve(S.map((r,i)=>r.map((v,j)=>v+(i==j?a:0))),c);
+function lassoSol(S,c,a,w0,rr){rr=rr==null?1:rr;const P=c.length,w=(w0||new Array(P).fill(0)).slice();
+for(let it=0;it<20000;it++){let d=0;for(let j=0;j<P;j++){let r=c[j];for(let k=0;k<P;k++)if(k!=j)r-=S[j][k]*w[k];const nv=Math.sign(r)*Math.max(0,Math.abs(r)-a*rr/2)/(S[j][j]+a*(1-rr));d=Math.max(d,Math.abs(nv-w[j]));w[j]=nv}if(d<1e-10)break}return w}
+
+const st={tab:0,mode:0,s:0,playing:false,r:.5};
+// ================= tab 0: 10th-degree polynomial on quadratic data
+const f0=x=>.5*x*x+x+2,gen=n=>Array.from({length:n},()=>{const x=-3+6*rnd();return[x,f0(x)+gauss()]});
+const M0=30,P0=10,TR=gen(M0);
+const mu=[],sd=[];for(let k=1;k<=P0;k++){const v=TR.map(([x])=>x**k),a=v.reduce((s,t)=>s+t,0)/M0;mu[k]=a;sd[k]=Math.sqrt(v.reduce((s,t)=>s+(t-a)**2,0)/M0)}
+const ym=TR.reduce((s,[,y])=>s+y,0)/M0,feat=x=>Array.from({length:P0},(_,i)=>(x**(i+1)-mu[i+1])/sd[i+1]);
+const Z0=TR.map(([x])=>feat(x)),Y0=TR.map(([,y])=>y-ym);
+const S0=Array.from({length:P0},(_,i)=>Array.from({length:P0},(_,j)=>Z0.reduce((s,z)=>s+z[i]*z[j],0)/M0)),c0=Array.from({length:P0},(_,i)=>Z0.reduce((s,z,r)=>s+z[i]*Y0[r],0)/M0);
+const pred0=(w,x)=>ym+feat(x).reduce((s,z,i)=>s+z*w[i],0),rm0=(w,pts)=>Math.sqrt(pts.reduce((s,[x,y])=>s+(pred0(w,x)-y)**2,0)/pts.length);
+const AR=[[1e-5,100],[1e-4,1],[1e-5,10]];                    // α range of the slider, per mode
+const alpha0=(k,s)=>s<=0?AR[k][0]:AR[k][0]*(AR[k][1]/AR[k][0])**(s/100);
+const sol0=(k,a,w0)=>k==0?ridgeSol(S0,c0,a):lassoSol(S0,c0,a,w0,k==2?st.r:1);
+const mkCurve=k=>{const out=[];let w=null;for(let i=100;i>=0;i-=2){const a=alpha0(k,i);w=sol0(k,a,w);out[i]={s:i,a,w:w.slice()}}return out.filter(Boolean).reverse()};
+const CURVE=[0,1,2].map(mkCurve);
+
+// ================= tab 1: two correlated features, y = 1.8 x1 + 0.6 x2 + noise
+seed=9;const M1=60,X1=[],Y1=[];for(let i=0;i<M1;i++){const a=gauss(),b=.75*a+Math.sqrt(1-.75*.75)*gauss();X1.push([a,b]);Y1.push(1.8*a+.6*b+.8*gauss())}
+const S1=[[0,0],[0,0]],c1v=[0,0];X1.forEach((x,i)=>{for(let a=0;a<2;a++){c1v[a]+=x[a]*Y1[i]/M1;for(let b=0;b<2;b++)S1[a][b]+=x[a]*x[b]/M1}});
+const OLS=ridgeSol(S1,c1v,0),AM=[6,3,6],R1=[[-1,3],[-1.5,2.5]];
+const mse1=t=>{const d=[t[0]-OLS[0],t[1]-OLS[1]];return S1[0][0]*d[0]*d[0]+2*S1[0][1]*d[0]*d[1]+S1[1][1]*d[1]*d[1]};   // MSE(θ) − MSE(OLS)
+const sol1=(k,a)=>k==0?ridgeSol(S1,c1v,a):lassoSol(S1,c1v,a,null,k==2?st.r:1);
+const mkPath=k=>Array.from({length:151},(_,i)=>{const a=AM[k]*i/150;return{a,w:sol1(k,a)}});
+const PATH=[0,1,2].map(mkPath);
+function setR(){CURVE[2]=mkCurve(2);PATH[2]=mkPath(2)}
+setR();
+const G1=64,HEAT=Array.from({length:G1},(_,i)=>Array.from({length:G1},(_,j)=>mse1([R1[0][0]+(R1[0][1]-R1[0][0])*(i+.5)/G1,R1[1][0]+(R1[1][1]-R1[1][0])*(j+.5)/G1])));
+const HMAX=Math.max(...HEAT.flat());
+
+// ================= state
+const alphaNow=()=>st.tab==0?alpha0(st.mode,st.s):(st.s<=0?0:AM[st.mode]*st.s/100);
+const W0=()=>{const k=st.mode,a=alphaNow();return sol0(k,a,k?CURVE[k][Math.round(st.s/2)]?.w:null)};
+
+// ---------- tab 0 panels
+function drawFit(w){size(c1,x1);const ctx=x1,W=c1.clientWidth,H=c1.clientHeight;if(W<150||H<120)return;ctx.clearRect(0,0,W,H);
+const FG=col('--fg'),MU=col('--mut'),LN=col('--line'),BL=col('--ga'),mc=col(MC[st.mode]);
+const ml=30,mr=10,mt=28,mb=26,xa=-3.2,xb=3.2,ya=-1.5,yb=12.5,X=v=>ml+(v-xa)/(xb-xa)*(W-ml-mr),Y=v=>H-mb-(v-ya)/(yb-ya)*(H-mt-mb);
+ctx.fillStyle=FG;ctx.font='600 13px system-ui';ctx.fillText('Data and fitted curve',10,16);
+ctx.strokeStyle=LN;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ml,mt);ctx.lineTo(ml,H-mb);ctx.lineTo(W-mr,H-mb);ctx.stroke();
+ctx.fillStyle=MU;ctx.font='12px system-ui';ctx.fillText('y',12,mt+4);ctx.textAlign='center';ctx.fillText('x',(ml+W-mr)/2,H-6);ctx.textAlign='left';
+ctx.save();ctx.beginPath();ctx.rect(ml,mt-2,W-ml-mr,H-mt-mb+4);ctx.clip();
+ctx.setLineDash([5,4]);ctx.strokeStyle=MU;ctx.lineWidth=1.6;ctx.beginPath();for(let k=0;k<=100;k++){const x=xa+(xb-xa)*k/100;k?ctx.lineTo(X(x),Y(f0(x))):ctx.moveTo(X(x),Y(f0(x)))}ctx.stroke();ctx.setLineDash([]);
+ctx.strokeStyle=mc;ctx.lineWidth=3;ctx.beginPath();for(let k=0;k<=240;k++){const x=xa+(xb-xa)*k/240,y=pred0(w,x);k?ctx.lineTo(X(x),Y(y)):ctx.moveTo(X(x),Y(y))}ctx.stroke();
+TR.forEach(([x,y])=>dot(ctx,X(x),Y(y),3.6,FG));ctx.restore();
+ctx.font='12px system-ui';let lx=W-mr;const lg=(t,c,f,dash)=>{ctx.textAlign='right';ctx.fillStyle=MU;ctx.fillText(t,lx,16);lx-=ctx.measureText(t).width+4;if(dash){ctx.setLineDash([4,3]);ctx.strokeStyle=MU;ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(lx-14,12);ctx.lineTo(lx,12);ctx.stroke();ctx.setLineDash([]);lx-=22}else{dot(ctx,lx-4,12,3.6,f?c:null,c,1.2);lx-=18}};
+if(W>=460){lg('true',MU,false,true);lg('training',FG,true)}else{lg('true',MU,false,true);lg('train',FG,true)}ctx.textAlign='left'}
+function drawBars(w){size(c2,x2);const ctx=x2,W=c2.clientWidth,H=c2.clientHeight;if(W<150||H<120)return;ctx.clearRect(0,0,W,H);
+const FG=col('--fg'),MU=col('--mut'),LN=col('--line'),mc=col(MC[st.mode]),ml=36,mr=10,mt=34,mb=34,PW=W-ml-mr,PH=H-mt-mb,YM=10,py=v=>mt+PH/2-clamp(v,-YM,YM)/YM*PH/2,bw=PW/P0;
+ctx.fillStyle=FG;ctx.font='600 13px system-ui';ctx.fillText('Coefficients θ₁ … θ₁₀',10,16);
+const nz=w.filter(v=>Math.abs(v)<1e-9).length;ctx.fillStyle=MU;ctx.font='12px system-ui';ctx.fillText(nz?`${nz} of ${P0} are exactly 0`:'none is exactly 0',10,29);
+ctx.strokeStyle=LN;ctx.lineWidth=1;[-10,-5,0,5,10].forEach(v=>{ctx.beginPath();ctx.moveTo(ml,py(v));ctx.lineTo(W-mr,py(v));ctx.stroke()});
+ctx.fillStyle=MU;ctx.textAlign='right';ctx.font='11px system-ui';[-10,-5,0,5,10].forEach(v=>ctx.fillText(v,ml-5,py(v)+4));ctx.textAlign='center';
+for(let i=0;i<P0;i++){const x=ml+i*bw+bw/2,v=w[i],big=Math.abs(v)>YM;ctx.fillStyle=MU;ctx.font='11px system-ui';ctx.fillText('θ'+String(i+1).replace(/\d/g,d=>'₀₁₂₃₄₅₆₇₈₉'[d]),x,mt+PH+14);
+if(Math.abs(v)<1e-9){ctx.fillStyle=MU;ctx.font='600 11px system-ui';ctx.fillText('0',x,py(0)-5);continue}
+ctx.fillStyle=mc;ctx.fillRect(x-bw*.32,Math.min(py(0),py(v)),bw*.64,Math.abs(py(v)-py(0)));if(Math.abs(v)<.05){ctx.fillStyle=MU;ctx.font='600 11px system-ui';ctx.fillText('≈0',x,py(0)-5)}
+if(big){ctx.fillStyle=FG;ctx.font='600 10px system-ui';ctx.fillText(v>0?'▲':'▼',x,v>0?mt+9:mt+PH-2)}}
+ctx.fillStyle=MU;ctx.font='11px system-ui';ctx.fillText('▲▼ off the scale',ml+PW-52,H-5);ctx.textAlign='left'}
+// ---------- tab 1 panels
+function drawPlane(th){size(c1,x1);const ctx=x1,W=c1.clientWidth,H=c1.clientHeight;if(W<150||H<120)return;ctx.clearRect(0,0,W,H);
+const FG=col('--fg'),MU=col('--mut'),LN=col('--line'),lo=hex(col('--sl')),hi=hex(col('--sh')),mc=col('--gb'),CD=col('--card'),k=st.mode;
+const[A,B]=R1,ml=44,mr=14,mt=34,mb=32,PW=W-ml-mr,PH=H-mt-mb,px=a=>ml+(a-A[0])/(A[1]-A[0])*PW,py=b=>mt+PH-(b-B[0])/(B[1]-B[0])*PH,cw=PW/G1,ch=PH/G1;
+ctx.fillStyle=FG;ctx.font='600 13px system-ui';ctx.fillText(W<460?'MSE(θ₁, θ₂) from above':'Cost MSE(θ₁, θ₂) seen from above',10,16);
+ctx.fillStyle=MU;ctx.font='12px system-ui';ctx.fillText('ellipses: same MSE',10,29);
+for(let i=0;i<G1;i++)for(let j=0;j<G1;j++){const t=Math.sqrt(Math.min(1,HEAT[i][j]/HMAX*1.6)),bd=Math.floor(t*9)/9;ctx.fillStyle=ramp(lo,hi,1-bd);ctx.fillRect(ml+i*cw,mt+PH-(j+1)*ch,cw+.6,ch+.6)}
+ctx.strokeStyle=LN;ctx.lineWidth=1;ctx.strokeRect(ml,mt,PW,PH);
+ctx.fillStyle=MU;ctx.font='12px system-ui';ctx.textAlign='center';for(let v=Math.ceil(A[0]);v<=A[1];v++)ctx.fillText(v,px(v),mt+PH+15);ctx.fillText('θ₁',W-mr-4,mt+PH+28);
+ctx.textAlign='right';for(let v=Math.ceil(B[0]);v<=B[1];v++)ctx.fillText(v,ml-6,py(v)+4);ctx.fillText('θ₂',ml-6,mt+10);ctx.textAlign='left';
+ctx.save();ctx.beginPath();ctx.rect(ml,mt,PW,PH);ctx.clip();
+ctx.strokeStyle=MU;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(px(0),mt);ctx.lineTo(px(0),mt+PH);ctx.moveTo(ml,py(0));ctx.lineTo(ml+PW,py(0));ctx.stroke();
+const a=alphaNow();
+if(a>0){ // penalty region through the current solution
+ ctx.beginPath();if(k==0){const r=Math.hypot(th[0],th[1]);for(let i=0;i<=90;i++){const t=i/90*6.2832,x=px(r*Math.cos(t)),y=py(r*Math.sin(t));i?ctx.lineTo(x,y):ctx.moveTo(x,y)}}
+ else if(k==2){const R=st.r,t=R*(Math.abs(th[0])+Math.abs(th[1]))+(1-R)*(th[0]**2+th[1]**2);for(let i=0;i<=240;i++){const q=i/240*6.2832,c=Math.cos(q),sn=Math.sin(q),B=Math.abs(c)+Math.abs(sn),r=2*t/(R*B+Math.sqrt(R*R*B*B+4*(1-R)*t)),x=px(r*c),y=py(r*sn);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath()}
+ else{const r=Math.abs(th[0])+Math.abs(th[1]);[[r,0],[0,r],[-r,0],[0,-r]].forEach(([u,v],i)=>i?ctx.lineTo(px(u),py(v)):ctx.moveTo(px(u),py(v)));ctx.closePath()}
+ ctx.globalAlpha=.28;ctx.fillStyle=mc;ctx.fill();ctx.globalAlpha=1;ctx.strokeStyle=mc;ctx.lineWidth=3;ctx.stroke();
+ {const c=mse1(th);ctx.strokeStyle=FG;ctx.lineWidth=2;ctx.beginPath();for(let i=0;i<=120;i++){const t=i/120*6.2832,u=Math.cos(t),v=Math.sin(t),q=S1[0][0]*u*u+2*S1[0][1]*u*v+S1[1][1]*v*v,r=Math.sqrt(c/q),x=px(OLS[0]+r*u),y=py(OLS[1]+r*v);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath();ctx.stroke()}
+}
+const P=PATH[k];ctx.strokeStyle=FG;ctx.lineWidth=2;ctx.beginPath();let first=true;for(const p of P){if(p.a>a+1e-9)break;const x=px(p.w[0]),y=py(p.w[1]);first?ctx.moveTo(x,y):ctx.lineTo(x,y);first=false}ctx.lineTo(px(th[0]),py(th[1]));ctx.stroke();
+dot(ctx,px(OLS[0]),py(OLS[1]),5.5,CD,FG,2);dot(ctx,px(0),py(0),3,FG);
+dot(ctx,px(th[0]),py(th[1]),8,mc,CD,2.5);ctx.restore();
+ctx.font='600 10px system-ui';ctx.fillStyle=FG;{const r=px(OLS[0])>ml+PW*.55;ctx.textAlign=r?'right':'left';halo(ctx,'no regularization solution (α = 0)',px(OLS[0])+(r?-9:9),py(OLS[1])-8,FG);ctx.textAlign='left'}if(a>0){const r=px(th[0])>ml+PW*.6;ctx.textAlign=r?'right':'left';halo(ctx,'regularized solution',px(th[0])+(r?-12:12),py(th[1])+16,FG);ctx.textAlign='left'}}
+function drawPath(th){size(c2,x2);const ctx=x2,W=c2.clientWidth,H=c2.clientHeight;if(W<150||H<120)return;ctx.clearRect(0,0,W,H);
+const FG=col('--fg'),MU=col('--mut'),LN=col('--line'),B1=col('--ga'),B2=col('--gc'),k=st.mode,amax=AM[k],ml=40,mr=14,mt=34,mb=34,PW=W-ml-mr,PH=H-mt-mb,YA=-.2,YB=2.2,px=a=>ml+a/amax*PW,py=v=>mt+PH-(v-YA)/(YB-YA)*PH;
+ctx.fillStyle=FG;ctx.font='600 13px system-ui';ctx.fillText('Coefficients as α grows',10,16);
+ctx.font='12px system-ui';let lx=W-mr;const lg=(t,c)=>{ctx.textAlign='right';ctx.fillStyle=c;ctx.fillText('■ '+t,lx,16);lx-=ctx.measureText('■ '+t).width+12};lg('θ₂',B2);lg('θ₁',B1);ctx.textAlign='left';
+ctx.strokeStyle=LN;ctx.lineWidth=1;[0,1,2].forEach(v=>{ctx.beginPath();ctx.moveTo(ml,py(v));ctx.lineTo(W-mr,py(v));ctx.stroke()});
+ctx.fillStyle=MU;ctx.font='11px system-ui';ctx.textAlign='right';[0,1,2].forEach(v=>ctx.fillText(v,ml-6,py(v)+4));ctx.textAlign='center';
+for(let i=0;i<=4;i++){const a=amax*i/4;ctx.fillText(fa(a),px(a),mt+PH+15)}ctx.font='12px system-ui';ctx.fillText('α',ml+PW/2,mt+PH+29);ctx.textAlign='left';
+const P=PATH[k],line=(j,c)=>{ctx.strokeStyle=c;ctx.lineWidth=3;ctx.beginPath();P.forEach((p,i)=>{const x=px(p.a),y=py(p.w[j]);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()};line(0,B1);line(1,B2);
+const a=alphaNow(),xn=px(a);ctx.strokeStyle=MU;ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(xn,mt);ctx.lineTo(xn,mt+PH);ctx.stroke();dot(ctx,xn,py(th[0]),5,B1,col('--card'),2);dot(ctx,xn,py(th[1]),5,B2,col('--card'),2);
+if(k>=1){const z=P.find(p=>Math.abs(p.w[1])<1e-9);if(z){const zx=px(z.a);ctx.setLineDash([3,3]);ctx.strokeStyle=B2;ctx.beginPath();ctx.moveTo(zx,py(0));ctx.lineTo(zx,mt+PH+4);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=B2;ctx.font='600 12px system-ui';ctx.textAlign=zx>W*.6?'right':'left';halo(ctx,'θ₂ is exactly 0',zx+(zx>W*.6?-6:6),py(0)-8,B2);ctx.textAlign='left'}}}
+
+// ---------- text
+function ui(w){$('rl').hidden=st.mode!=2;$('rv').textContent='r = '+st.r.toFixed(2);const k=st.mode,a=alphaNow(),nm=['Ridge','Lasso','Elastic Net'][k],pen=[`α Σ<sub>i</sub> θ<sub>i</sub><sup>2</sup>`,`α Σ<sub>i</sub> | θ<sub>i</sub> |`,`α ( r Σ<sub>i</sub> | θ<sub>i</sub> | + (1 − r) Σ<sub>i</sub> θ<sub>i</sub><sup>2</sup> )`][k];
+$('ttl').textContent=nm+' regression';
+$('cap').textContent=st.tab==0?['Ridge shrinks all coefficients. The curve gets smoother, but no coefficient becomes exactly 0.','Lasso pushes unimportant coefficients to exactly 0, so it also selects features.','Elastic Net mixes both penalties. r = 0 is Ridge, r = 1 is Lasso, in between it shrinks and still sets some coefficients to exactly 0.'][k]
+ :['The solution is where an MSE ellipse first touches the circle. It slides toward 0 but never lands on an axis.','The solution is where an MSE ellipse first touches the diamond. Its corners sit on the axes, so a coefficient can become exactly 0.','With r between 0 and 1 the region is a diamond with rounded sides. Move r: it becomes the circle (Ridge) or the diamond (Lasso).'][k];
+$('eq').innerHTML=`<div>J(θ) = MSE(θ) + ${pen}</div>`;
+$('av').textContent='α = '+fa(a);
+}
+function setScale(){$('sc').innerHTML=st.tab==0?'<span>overfitting</span><span>underfitting</span>':'<span>no penalty</span><span>strong penalty</span>'}
+let cache={k:-1,s:-1,tab:-1,w:null};
+function current(){if(cache.r!==st.r||cache.k!==st.mode||cache.s!==st.s||cache.tab!==st.tab){cache={r:st.r,k:st.mode,s:st.s,tab:st.tab,w:st.tab==0?W0():sol1(st.mode,alphaNow())}}return cache.w}
+let last=0;function tick(ts){const dt=Math.min(.05,(ts-(last||ts))/1000);last=ts;
+const w=current();
+if(st.tab==0){drawFit(w);drawBars(w)}else{drawPlane(w);drawPath(w)}
+ui(w);requestAnimationFrame(tick)}
+$('rs').onclick=()=>{st.s=0;st.playing=false;$('al').value=0};
+$('al').oninput=e=>{st.s=+e.target.value;st.playing=false};
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{st.tab=+b.dataset.t;st.s=0;st.playing=false;$('al').value=0;document.querySelectorAll('#tabs button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.t==st.tab));setScale()});
+$('rr').oninput=e=>{st.r=+e.target.value/20;setR()};
+document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>{st.mode=+b.dataset.k;document.querySelectorAll('#modes button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.k==st.mode))});
+setScale();requestAnimationFrame(tick);
+</script></main></body></html>
